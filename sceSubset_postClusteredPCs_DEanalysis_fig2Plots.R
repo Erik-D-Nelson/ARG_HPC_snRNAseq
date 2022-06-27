@@ -23,33 +23,25 @@ dev.off()
 
 ##Differential expression analysis, broad===================================
 ###Set up data==================================================================
-#Subset for DG only and aggregateAcrossCells to pseudobulk
+sce.subset$cellType_DE<-as.character(sce.subset$annotation)
+sce.subset$cellType_DE<-factor(ifelse(sce.subset$cellType_DE %in% c("DG.1","DG.2"),
+                                      "DG",sce.subset$cellType_DE))
+#aggregateAcrossCells to pseudobulk
 summed <- aggregateAcrossCells(sce.subset,
                                ids=colData(sce.subset)
-                               [c('condition','sample_name','annotation')])
-
-#Use perCellQCMetrics to get library sizes for each sample 
-#(didn't carry over after pseudobulk, may be an easier way but this worked
-#so I ran with it)
-location <- mapIds(EnsDb.Mmusculus.v79, keys=rowData(summed)$ID, 
-                   column="SEQNAME", keytype="GENEID")
-stats <- perCellQCMetrics(summed)
-colnames(stats)
-colData(summed)$sum<-stats$sum
-
-#filter out small sample sizes
-summed <- summed[,summed$ncells >= 20]
+                               [c('Sample','cellType_DE')])
 
 #Filter out lowly expressed genes 
-summed<-summed[filterByExpr(summed, group=summed$sample_name),]
+
 
 #make DGElist
 y <- DGEList(counts(summed), samples=colData(summed),
              genes=rowData(summed))
 y$samples$condition<-factor(y$samples$condition)
+y<-y[filterByExpr(y, group=summed$Sample),]
 
 #make design matrix
-design <- model.matrix(~condition+annotation, y$samples)
+design <- model.matrix(~condition,y$samples)
 
 #normalization 
 y <- calcNormFactors(y)
@@ -59,15 +51,15 @@ y <- estimateDisp(y, design = design)
 
 #run DE analysis and look at results
 efit <- glmQLFit(y, design = design)
-elrt <- glmQLFTest(efit, coef = 2)
+elrt <- glmQLFTest(efit, coef=2)
 res<-topTags(elrt,n=Inf)
 x<-as.data.frame(res)
 x<-x[x$FDR<=0.05,]
 
 ##MA plot for figure 2
-ids <- c("Nptx2" , 'Bdnf' , 'Egr3')
+ids <- c("Nptx2" , 'Bdnf', 'Gadd45b', 'Arc')
 gene.labels <- x[x$Symbol %in% ids,]
-pdf('202109214overall_MA_plot.pdf',height=5,width=5)
+#pdf('overall_MA_plot.pdf',height=5,width=5)
 plotSmear(elrt, de.tags = rownames(x))
 text(x=gene.labels$logCPM, y=gene.labels$logFC,
      labels=rownames(gene.labels), cex=1, pos=1)
@@ -75,20 +67,72 @@ text(x=gene.labels$logCPM, y=gene.labels$logFC,
 dev.off()
 
 #grouped heatmap for figure 2
-pdf('heatmap_IEGs_bySample.pdf')
-features=c('Arc','Bdnf','Nptx2','Jun','Junb','Nr4a1','Baz1a')
-plotGroupedHeatmap(sce.subset,features=features,cluster_rows=F,cluster_cols=F,group='sample_name',center=F)
+pdf('heatmap_IEGs_bySample.pdf',w=4,h=3)
+features=c('Bdnf','Nptx2','Baz1a','Inhba','Mapk4','Arc')
+plotGroupedHeatmap(sce.subset,features=features,cluster_rows=F,cluster_cols=F,group='Sample',center=T,fontsize=11)
 dev.off()
 
+data <- data %>% 
+  mutate(
+    Expression = case_when(logFC >= 0 & FDR <= 0.05 ~ "Up-regulated",
+                           logFC <= 0 & FDR <= 0.05 ~ "Down-regulated",
+                           TRUE ~ "Unchanged")
+  )
+p2 <- ggplot(data, aes(logFC, -log(PValue,10))) +
+  geom_point(aes(color = Expression), size = 1/2) +
+  xlab(expression("log"[2]*"FC")) + 
+  ylab(expression("-log"[10]*"PValue")) +
+  scale_color_manual(values = c("dodgerblue3", "gray50", "firebrick3")) +
+  guides(colour = guide_legend(override.aes = list(size=1.5))) 
+
+p2
+pdf('test.pdf',h=3,w=4.25)
+p2 + geom_label_repel(data = top_genes,
+                      mapping = aes(logFC, -log(PValue,10),
+                      label=rownames(top_genes))) + 
+                      theme(legend.position='none')
+
+
 #GO analysis for figure 2
-enrich_go <- enrichGO(gene = x$ID[x$FDR  < 0.05],
+enrich_go <- enrichGO(gene = x$ID,
                       OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "BP",
                       pAdjustMethod = "BH", pvalueCutoff = 0.01, qvalueCutoff = 0.05)
 
+enrich_up <- enrichGO(gene = x$ID[x$logFC > 0],
+                      OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "BP",
+                      pAdjustMethod = "BH", pvalueCutoff = 0.01, qvalueCutoff = 0.05)
+
+#enrich_down2 <- enrichGO(gene = down$ID,
+#                      OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "MF",
+#                      pAdjustMethod = "BH", pvalueCutoff = 0.05, qvalueCutoff = 0.05)
+
 ## Visualize enrichment results
-pdf('barplot_GOanalysis_30cats.pdf')
-barplot(enrich_go, font.size = 7,showCategory=30)
+pdf('barplot_GOanalysis_10cats.pdf',h=6,w=4.25)
+barplot(enrich_up, font.size = 11,showCategory=10)
 dev.off()
+
+hsmart <- useMart(dataset = "hsapiens_gene_ensembl", biomart = "ensembl")
+up_mapping <- getBM(
+  attributes = c('entrezgene_id'), 
+  filters = 'ensembl_gene_id',
+  values = up$ID,
+  mart = hsmart
+)
 
 save(sce.subset, hdg, pc.choice.hpc,marks,file="/users/enelson/20210907_sceSubset_postClustering_moreHDG_k20&50_clusteredPCs.rda")
 save(summed,y,x,res,enrich_go,file='/users/enelson/mouseHPC_broad_differentialExpressionAnalysis_results.rda')
+
+sce.subset$cellType<-as.character(sce.subset$annotation)
+sce.subset$cellType<-ifelse(sce.subset$cellType %in% c('RHP.L5/6/6b.1','RHP.L5/6/6b.2','RHP.L5/6/6b.3','RHP.L5/6/6b.4'),'RHP.L5/6/6b',
+ifelse(sce.subset$cellType %in% c('RHP.L2/3.1','RHP.L2/3.2','RHP.L2/3.3','RHP.L2/3.4','RHP.L2/3.5','RHP.L2/3.6'),'RHP.L2/3',sce.subset$cellType))
+sce.subset$cellType<-as.factor(sce.subset$cellType)
+
+
+set.seed(109)
+dbl.dens.focused <- map(names(pilot.data.normd), ~computeDoubletDensity(pilot.data.normd[[.x]], subset.row=topHVGs[[.x]]))
+names(dbl.dens.focused) <- names(pilot.data.normd)
+
+map(dbl.dens.focused, ~round(quantile(.x, probs=seq(0,1,by=0.05)),3))
+
+sce.subset$active<-factor(ifelse(sce.subset$condition=='control',
+    paste0(sce.subset$cellType,'.sham'),paste0(sce.subset$cellType,'.seizure')))
