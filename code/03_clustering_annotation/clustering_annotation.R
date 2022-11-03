@@ -11,6 +11,7 @@ library(ggplot2)
 library(dplyr)
 library(bluster)
 library(pheatmap)
+library(schex)
 
 load("/users/enelson/sceSubset.rda")
 
@@ -59,11 +60,27 @@ sce.subset$cellType<-factor(sce.subset$cellType,
 
 plotUMAP(sce.subset,colour_by='cellType',text_by='label')
 ###Figure 1 plots===============================================================
+##Hexbin plots, by cell type and condition
+##Make new sce with hexbins using make_hexbin
+hex <- make_hexbin(sce.subset, nbins = 100,
+                   dimension_reduction = "UMAP", use_dims=c(1,2))
 
-##UMAP by annotation for figure 1
-pdf('20210913_UMAP_byAnnotation.pdf',h=7,w=7)
-plotUMAP(sce.subset,colour_by='k_20_label',
-         text_by='annotation',text_size=3,add_legend=F) 
+##Make cluster labels for plot
+label_df <- make_hexbin_label(hex, col="cellType")
+
+#make plot 
+pp <- plot_hexbin_meta(hex, col="cellType", action="majority",
+                       xlab='UMAP1',ylab='UMAP2',colors=colors) + ggtitle("") 
+pdf("UMAP_hex_condition.pdf",h=5,w=6)
+pp +theme(legend.position='right',text = element_text(size = 14))
+dev.off()
+
+
+#make plot 
+pp2 <- plot_hexbin_meta(hex, col="condition", action="majority",
+                       xlab='UMAP1',ylab='UMAP2',colors=colors) + ggtitle("") 
+pdf("UMAP_hex_condition.pdf",h=5,w=6)
+pp +theme(legend.position='right',text = element_text(size = 14))
 dev.off()
 
 ##dotplot for figure 1
@@ -78,6 +95,21 @@ plotDots(sce,group='cellType',features=features,color=c('white','red')) +
   scale_y_discrete(limits=rev(features)) +
   theme(axis.text.x = element_text(angle = 45,vjust=0.75),text = element_text(size = 20))
 dev.off()
+
+
+
+
+
+
+
+
+##UMAP by annotation for figure 1
+pdf('20210913_UMAP_byAnnotation.pdf',h=7,w=7)
+plotUMAP(sce.subset,colour_by='k_20_label',
+         text_by='annotation',text_size=3,add_legend=F) 
+dev.off()
+
+
 
 CA3.1_cor<-list()
 for(i in 1:length(enrich_CA3.1$geneID)){
