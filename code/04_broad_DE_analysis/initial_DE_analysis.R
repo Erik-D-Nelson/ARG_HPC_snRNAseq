@@ -1,12 +1,7 @@
 library(SingleCellExperiment)
-library(scRNAseq)
 library(EnsDb.Mmusculus.v79)
 library(scater)
 library(scran)
-library(scry)
-library(DropletUtils)
-library(jaffelab)
-library(gridExtra)
 library(ggplot2)
 library(dplyr)
 library(bluster)
@@ -20,8 +15,8 @@ load("/users/enelson/sceSubset.rda")
 ##Differential expression analysis, broad===================================
 ###Set up data==================================================================
 sce.subset$cellType_DE<-as.character(sce.subset$annotation)
-sce.subset$cellType_DE<-factor(ifelse(sce.subset$cellType_DE %in% c("DG.1","DG.2"),
-                                      "DG",sce.subset$cellType_DE))
+sce.subset$cellType_DE<-factor(ifelse(sce.subset$cellType_DE %in% c("GC.1","GC.2"),
+                                      "GC",sce.subset$cellType_DE))
 #aggregateAcrossCells to pseudobulk
 summed <- aggregateAcrossCells(sce.subset,
                                ids=colData(sce.subset)
@@ -69,59 +64,66 @@ plotGroupedHeatmap(sce.subset,features=features,cluster_rows=F,cluster_cols=F,gr
 dev.off()
 
 ##volcano plot
-
+data<-as.data.frame(res)
 data <- data %>% 
   mutate(
-    Expression = case_when(logFC >= 0 & FDR <= 0.05 ~ "Up-regulated",
-                           logFC <= 0 & FDR <= 0.05 ~ "Down-regulated",
+    Expression = case_when(logFC >= 0 & FDR <= 0.05 ~ "Upregulated",
+                           logFC <= 0 & FDR <= 0.05 ~ "Downregulated",
+                          # logFC<1 & logFC>0 & FDR <= 0.05 ~ "Upregulated, FDR only",
+                          # logFC<0 & logFC>-1 & FDR <= 0.05 ~ "Downregulated, FDR only",
                            TRUE ~ "Unchanged")
   )
-p2 <- ggplot(data, aes(logFC, -log(PValue,10))) +
+
+top_genes <- bind_rows(
+  data %>% 
+    filter(Expression == 'Upregulated') %>% 
+    arrange(FDR, desc(abs(logFC))) %>% 
+    head(5),
+  data %>% 
+    filter(Expression == 'Downregulated') %>% 
+    arrange(FDR, desc(abs(logFC))) %>% 
+    head(5)
+)
+
+p2 <- ggplot(data, aes(logFC, -log(FDR,10))) +
   geom_point(aes(color = Expression), size = 1/2) +
-  xlab(expression("log"[2]*"FC")) + 
-  ylab(expression("-log"[10]*"PValue")) +
-  scale_color_manual(values = c("dodgerblue3", "gray50", "firebrick3")) +
-  guides(colour = guide_legend(override.aes = list(size=1.5))) 
+  xlab(expression("log"[2]*"fold change")) + 
+  ylab(expression("-log"[10]*"adjusted p-value")) +
+  scale_color_manual(values = c(#"darkmagenta",
+                                "indianred2", 
+                                "gray50", 
+                               # "seagreen", 
+                                "cornflowerblue")) +
+  guides(colour = guide_legend(override.aes = list(size=1.5)))+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"),
+        legend.position='right') +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed")+
+ # geom_vline(xintercept = 1, linetype = "dashed")+
+#  geom_vline(xintercept = -1, linetype = "dashed")+
+  geom_text_repel(data = top_genes,
+                  mapping = aes(logFC, -log(FDR,10),
+                  color=Expression,
+                  label=rownames(top_genes)))
 
+pdf('volcano.pdf',h=7,w=8.5)
 p2
-pdf('volcano.pdf',h=3,w=4.25)
-p2 + geom_label_repel(data = top_genes,
-                      mapping = aes(logFC, -log(PValue,10),
-                      label=rownames(top_genes))) + 
-                      theme(legend.position='none')
-
+dev.off()
 
 #GO analysis for figure 2
 enrich_go <- enrichGO(gene = x$ID,
                       OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "BP",
                       pAdjustMethod = "BH", pvalueCutoff = 0.01, qvalueCutoff = 0.05)
 
-enrich_up <- enrichGO(gene = x$ID[x$logFC > 0],
-                      OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "BP",
-                      pAdjustMethod = "BH", pvalueCutoff = 0.01, qvalueCutoff = 0.05)
-
-#enrich_down2 <- enrichGO(gene = down$ID,
-#                      OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "MF",
-#                      pAdjustMethod = "BH", pvalueCutoff = 0.05, qvalueCutoff = 0.05)
 
 ## Visualize enrichment results
 pdf('barplot_GOanalysis_10cats.pdf',h=6,w=4.25)
 barplot(enrich_up, font.size = 11,showCategory=10)
 dev.off()
 
-hsmart <- useMart(dataset = "hsapiens_gene_ensembl", biomart = "ensembl")
-up_mapping <- getBM(
-  attributes = c('entrezgene_id'), 
-  filters = 'ensembl_gene_id',
-  values = up$ID,
-  mart = hsmart
-)
-
 save(sce.subset, hdg, pc.choice.hpc,marks,file="/users/enelson/20210907_sceSubset_postClustering_moreHDG_k20&50_clusteredPCs.rda")
 save(summed,y,x,res,enrich_go,file='/users/enelson/mouseHPC_broad_differentialExpressionAnalysis_results.rda')
 
-sce.subset$cellType<-as.character(sce.subset$annotation)
-sce.subset$cellType<-ifelse(sce.subset$cellType %in% c('RHP.L5/6/6b.1','RHP.L5/6/6b.2','RHP.L5/6/6b.3','RHP.L5/6/6b.4'),'RHP.L5/6/6b',
-ifelse(sce.subset$cellType %in% c('RHP.L2/3.1','RHP.L2/3.2','RHP.L2/3.3','RHP.L2/3.4','RHP.L2/3.5','RHP.L2/3.6'),'RHP.L2/3',sce.subset$cellType))
-sce.subset$cellType<-as.factor(sce.subset$cellType)
 

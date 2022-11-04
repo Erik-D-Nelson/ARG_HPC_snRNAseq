@@ -96,7 +96,8 @@ plotDots(sce,group='cellType',features=features,color=c('white','red')) +
 dev.off()
 
 
-
+save(sce.subset, hdg, pc.choice.hpc,marks,file="/users/enelson/20210907_sceSubset_postClustering_moreHDG_k20&20_clusteredPCs.rda")
+##Proceed to figure 2 plots
 
 
 
@@ -135,8 +136,6 @@ for(i in 1:length(markers.custom)){
   )}
 dev.off()
 
-save(sce.subset, hdg, pc.choice.hpc,marks,file="/users/enelson/20210907_sceSubset_postClustering_moreHDG_k20&20_clusteredPCs.rda")
-##Proceed to figure 2 plots
 
 sce$annotation<-factor(sce$annotation,
     levels=c("DG.1","DG.2","CA4","CA3.1","CA3.2","CA2",
