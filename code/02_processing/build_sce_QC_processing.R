@@ -72,7 +72,7 @@ sce.total<-cbind(sceList.mouse10x[[1]],sceList.mouse10x[[2]],
 colData(sce.total)$condition<-factor(
   ifelse(
     colData(sce.total)$Sample %in% c("2985","2986"),
-    "control","seizure")
+    "Sham","ECS")
 )
 # In case mess anything up
 #save(sce.total, file="mouse_hpc_ECS_preprocessing.rda")
