@@ -101,7 +101,7 @@ features<-c('Mir670hg','Ppm1h',
   'Baz1a','Tll1','Inhba',
   'Kdm2b')
 
-volcano_de<-de.dge[c(1,3,6,12)]
+volcano_de<-de.dge[c(1,3,11,15)]
 names(volcano_de)<-c('CA1','CA3.1','GC','PS.1')
 volcano_plots<-list()
 
@@ -120,7 +120,7 @@ volcano_plots[[i]]<-ggplot(data, aes(logFC, -log(FDR,10))) +
   geom_point(aes(color = Expression), size = 1/2) +
   xlab("log2 fold change") + 
   ylab("-log10 adjusted p-value") +
-  scale_color_manual(values = c("cornflowerblue", "gray50", "indianred")) +
+  scale_color_manual(values = c("indianred", "gray50", "cornflowerblue")) +
   guides(colour = guide_legend(override.aes = list(size=1.5)))+
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -135,7 +135,7 @@ volcano_plots[[i]]<-ggplot(data, aes(logFC, -log(FDR,10))) +
   geom_text_repel(data = genes,
                    mapping = aes(logFC, -log(FDR,10),
                                  label=rownames(genes),
-                                 color=Expression),hjust=8) + 
+                                 color=Expression),hjust=25) + 
   theme(legend.position='none') 
 }
 pdf('ca1_volcano.pdf',h=2.1,w=3.25)
