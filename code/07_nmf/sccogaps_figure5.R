@@ -24,8 +24,7 @@ results
 #factorData names(0):
 
 ##We need to make 3, maybe four plots. The first is just a dotplot where 
-##size=cell type correlation and color=seizure correlation
-##Turns out I could have just done my initial method which is super cool...
+##size=cell type correlation and color=ECS correlation
 ##One hot encode annotation and condition
 #First, load sce subset
 load('newSceSubset_geneFiltered_under20.rda')
@@ -44,24 +43,8 @@ sce.subset$cellType<-factor(sce.subset$cellType)#, levels=c("DG.1","DG.2","CA4",
 
 cellType<-data.frame('ID'=colnames(sce.subset),'cellType'=sce.subset$cellType)
 
-pdf('test_balloon.pdf',height=4,width=9)
-ggplot(melted, aes(x =Pattern, y = Annotation)) + 
-    geom_point(aes(size=cor_annotation,color=cor_seizure)) +
-    theme(panel.background=element_blank(),
-          panel.border = element_rect(colour = "black", 
-          fill=NA),
-          axis.text.x = element_text(angle = 90),
-          text = element_text(size = 10)) +
-    scale_radius(breaks=c(0,.25,.5,.75,1),limits=c(-0.25,1),range=c(0,5)) +
-    viridis::scale_color_viridis(option='plasma',breaks=c(-0.4,0,0.4), limits=c(-0.41,0.41)) +
-    labs(size=expression(paste("Pearson's ", 
-                               italic("r"), 
-                               ", pattern and annotation")),
-         color=expression(paste("Pearson's ", 
-                                italic("r"), 
-                                ", pattern and seizure")))
-dev.off()
-ls()
+
+colData(sce.subset)<-cbind(colData(sce.subset),results@sampleFactors)
 
 breaks<-seq(-0.1,1,by=.1)
 yl<-as.vector(y)
@@ -76,25 +59,81 @@ z<-cor(condition,results@sampleFactors)
 y<-y[rev(type_order),pat_order]
 z<-z[,pat_order]
 melted<-melt(y)
-seizure<-z[2,]
+ECS<-z[2,]
 guide<-as.character(unique(melted$Var2))
-seizure<-seizure[names(seizure) %in% guide]
-seizure<-rep(seizure,each=18)
-melted$seizure<-seizure
+ECS<-ECS[names(ECS) %in% guide]
+ECS<-rep(ECS,each=18)
+melted$ECS<-ECS
 
-names(melted)<-c("Annotation","Pattern","cor_annotation","cor_seizure")
+pdf('test_balloon.pdf',height=4,width=9)
+ggplot(melted, aes(x =Pattern, y = Annotation)) + 
+  geom_point(aes(size=cor_annotation,color=cor_ECS)) +
+  theme(panel.background=element_blank(),
+        panel.border = element_rect(colour = "black", 
+                                    fill=NA),
+        axis.text.x = element_text(angle = 90),
+        text = element_text(size = 10)) +
+  scale_radius(breaks=c(0,.25,.5,.75,1),limits=c(-0.25,1),range=c(0,5)) +
+  viridis::scale_color_viridis(option='plasma',breaks=c(-0.4,0,0.4), limits=c(-0.41,0.41)) +
+  labs(size=expression(paste("Pearson's ", 
+                             italic("r"), 
+                             ", pattern and annotation")),
+       color=expression(paste("Pearson's ", 
+                              italic("r"), 
+                              ", pattern and ECS")))
+dev.off()
+
+names(melted)<-c("Annotation","Pattern","cor_annotation","cor_ECS")
 
 hex <- make_hexbin(sce.subset, nbins = 100, 
                            dimension_reduction = "UMAP", use_dims=c(1,2))
+
+label_df <- make_hexbin_label(hex, col="cellType")
+
 
 pdf('hex_23.pdf',h=4,w=4)
 plot_hexbin_meta(hex,col='Pattern_23',action='median') + 
   labs(title='Pattern 23',
        x = 'UMAP1', y='UMAP2',
        color='Pattern weights') + 
-  theme(text = element_text(size = 9))
+  theme(text = element_text(size = 9))+ 
+  theme(text = element_text(size = 9)) + ggrepel::geom_label_repel(data = label_df, aes(x=x, y=y, label = label), 
+                                                                   colour="black",  label.size = NA, fill = NA)+
+  scale_fill_viridis(option='turbo')
 dev.off()
 
+pdf('hex_26.pdf',h=4,w=4)
+plot_hexbin_meta(hex,col='Pattern_26',action='median') + 
+  labs(title='Pattern 26',
+       x = 'UMAP1', y='UMAP2',
+       color='Pattern weights') + 
+  theme(text = element_text(size = 9))+ 
+  theme(text = element_text(size = 9)) + ggrepel::geom_label_repel(data = label_df, aes(x=x, y=y, label = label), 
+                                                                   colour="black",  label.size = NA, fill = NA)+
+  scale_fill_viridis(option='turbo')
+dev.off()
+
+pdf('hex_46.pdf',h=4,w=4)
+plot_hexbin_meta(hex,col='Pattern_46',action='median') + 
+  labs(title='Pattern 46',
+       x = 'UMAP1', y='UMAP2',
+       color='Pattern weights') + 
+  theme(text = element_text(size = 9))+ 
+  theme(text = element_text(size = 9)) + ggrepel::geom_label_repel(data = label_df, aes(x=x, y=y, label = label), 
+                                                                   colour="black",  label.size = NA, fill = NA)+
+  scale_fill_viridis(option='turbo')
+dev.off()
+
+pdf('hex_55.pdf',h=4,w=4)
+plot_hexbin_meta(hex,col='Pattern_55',action='median') + 
+  labs(title='Pattern 55',
+       x = 'UMAP1', y='UMAP2',
+       color='Pattern weights') + 
+  theme(text = element_text(size = 9))+ 
+  theme(text = element_text(size = 9)) + ggrepel::geom_label_repel(data = label_df, aes(x=x, y=y, label = label), 
+                                                                   colour="black",  label.size = NA, fill = NA)+
+  scale_fill_viridis(option='turbo')
+dev.off()
 
 
 
