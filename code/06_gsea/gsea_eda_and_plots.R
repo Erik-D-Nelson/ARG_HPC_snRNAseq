@@ -13,7 +13,7 @@ library(GOSemSim)
 
 ##We need to build some dotplots for different GO clusters
 load('specific_gsea_results.rda')
-load('de.dge.rda')
+load('de_dge.rda')
 
 ##get Count for each list element
 
@@ -85,6 +85,10 @@ for(i in 1:length(bp)){
 
 bp_total<-unique(do.call(c, bp_total))
 
+for(i in 1:length(bp)){
+  bp[[i]]<-bp[[i]][match(bp_total,rownames(bp[[i]])),]
+}
+
 cc_total<-list()
 for(i in 1:length(cc)){
   cc_total[[i]]<-rownames(cc[[i]])
@@ -92,12 +96,20 @@ for(i in 1:length(cc)){
 
 cc_total<-unique(do.call(c, cc_total))
 
+for(i in 1:length(cc)){
+  cc[[i]]<-cc[[i]][match(cc_total,rownames(cc[[i]])),]
+}
+
 mf_total<-list()
 for(i in 1:length(mf)){
   mf_total[[i]]<-rownames(mf[[i]])
 }
 
 mf_total<-unique(do.call(c, mf_total))
+
+for(i in 1:length(mf)){
+  mf[[i]]<-mf[[i]][match(mf_total,rownames(mf[[i]])),]
+}
 
 ##now we need to get a named vector of average fdr-adjusted p-values for naming clusters in rrvgo
 scores_fun<-function(x,y){
@@ -123,10 +135,9 @@ terms<-list(bp_total,cc_total,mf_total)
 
 scores<-list()
 for(i in 1:length(results)){
-scores[[i]]<-scores_fun(results[[i]],terms[[i]])
+  scores[[i]]<-scores_fun(results[[i]],terms[[i]])
 }
-
-##we need to cluster all terms from all ontologies
+# ##we need to cluster all terms from all ontologies
 
 
 bp_data<-godata(
@@ -158,10 +169,13 @@ bp_simmatrix<-calculateSimMatrix(
   method = "Wang"
 )
 
+
+#bp_scores<-bp_scores[names(bp_scores) %in% rownames(bp_simmatrix)]
 bp_reducedTerms <- reduceSimMatrix(bp_simmatrix,
                                 threshold=0.9,
                                 scores=scores[[1]],
                                 orgdb="org.Mm.eg.db")
+
 
 cc_simmatrix<-calculateSimMatrix(
   cc_total,
@@ -171,8 +185,9 @@ cc_simmatrix<-calculateSimMatrix(
   method = "Wang"
 )
 
+
 cc_reducedTerms <- reduceSimMatrix(cc_simmatrix,
-                                   threshold=0.8,
+                                   threshold=0.7,
                                    scores=scores[[2]],
                                    orgdb="org.Mm.eg.db")
 
@@ -184,9 +199,10 @@ mf_simmatrix<-calculateSimMatrix(
   method = "Wang"
 )
 
+
 mf_reducedTerms <- reduceSimMatrix(mf_simmatrix,
                                    threshold=0.7,
-                                   scores=scores[[3]],
+                                  scores=scores[[3]],
                                    orgdb="org.Mm.eg.db")
 
 parents_bp<-unique(bp_reducedTerms$parentTerm)
@@ -219,11 +235,18 @@ for(i in 1:length(parents_mf)){
 }
 names(group_mf)<-parents_mf
 
-##Now let's go ahead and find which clusters have the highest mean fdr
+##Now let's go ahead calculate gene ratios and find which clusters have the highest mean fdr
 #BP:
 for(i in 1:length(bp)){
-  bp[[i]]<-bp[[i]][match(bp_total,rownames(bp[[i]])),]
+  bp[[i]]$setSize[is.na(bp[[i]]$setSize)]<-0
 }
+bp[[16]]$Count<-rep(NA,814)
+for(i in 1:length(bp)){
+  bp[[i]]$Count[is.na(bp[[i]]$Count)]<-0
+  bp[[i]]$geneRatio<-ifelse(bp[[i]]$setSize > 0, 
+                            bp[[i]]$Count/bp[[i]]$setSize,0)
+}
+
 
 fdr_bp<-list()
 for(i in 1:length(bp)){
@@ -250,33 +273,38 @@ for(i in 1:length(group_bp)){
 bp_median[[i]]<-median(bp_parent_df[[i]]$mean)
 }
 
-count_bp<-list()
+geneRatio_bp<-list()
 for(i in 1:length(bp)){
-  count_bp[[i]]<-bp[[i]]$Count
+  geneRatio_bp[[i]]<-bp[[i]]$geneRatio
 }
-count_bp[[16]]<-rep(NA,814)
 
-bp_count_df<-do.call(cbind.data.frame, count_bp)
-bp_count_df[is.na(bp_count_df)]<-0
-colnames(bp_count_df)<-names(de.dge)
-rownames(bp_count_df)<-bp_total
+bp_geneRatio_df<-do.call(cbind.data.frame, geneRatio_bp)
+bp_geneRatio_df[is.na(bp_geneRatio_df)]<-0
+colnames(bp_geneRatio_df)<-names(de.dge)
+rownames(bp_geneRatio_df)<-bp_total
 
 
-bp_parent_count<-list()
+
+
+bp_parent_geneRatio<-list()
 for(i in 1:length(group_bp)){
-  bp_parent_count[[i]]<-bp_count_df[rownames(bp_count_df) %in% group_bp[[i]],]
+  bp_parent_geneRatio[[i]]<-bp_geneRatio_df[rownames(bp_geneRatio_df) %in% group_bp[[i]],]
 }
 
 
 
 names(bp_parent_df)<-names(group_bp)
-names(bp_parent_count)<-names(group_bp)
+names(bp_parent_geneRatio)<-names(group_bp)
 names(bp_means)<-names(group_bp)
 names(bp_median)<-names(group_bp)
 
 #CC:
 for(i in 1:length(cc)){
-  cc[[i]]<-cc[[i]][match(cc_total,rownames(cc[[i]])),]
+  cc[[i]]$setSize[is.na(cc[[i]]$setSize)]<-0
+  cc[[i]]$Count[is.na(cc[[i]]$Count)]<-0
+  cc[[i]]$geneRatio<-ifelse(cc[[i]]$setSize > 0, 
+                            cc[[i]]$Count/cc[[i]]$setSize,0)
+  
 }
 
 fdr_cc<-list()
@@ -304,31 +332,48 @@ for(i in 1:length(group_cc)){
   cc_median[[i]]<-median(cc_parent_df[[i]]$mean)
 }
 
-count_cc<-list()
+geneRatio_cc<-list()
 for(i in 1:length(cc)){
-  count_cc[[i]]<-cc[[i]]$Count
+  geneRatio_cc[[i]]<-cc[[i]]$geneRatio
 }
 
-cc_count_df<-do.call(cbind.data.frame, count_cc)
-cc_count_df[is.na(cc_count_df)]<-0
-colnames(cc_count_df)<-names(de.dge)
-rownames(cc_count_df)<-cc_total
+cc_geneRatio_df<-do.call(cbind.data.frame, geneRatio_cc)
+cc_geneRatio_df[is.na(cc_geneRatio_df)]<-0
+colnames(cc_geneRatio_df)<-names(de.dge)
+rownames(cc_geneRatio_df)<-cc_total
 
 
-cc_parent_count<-list()
+
+
+cc_parent_geneRatio<-list()
 for(i in 1:length(group_cc)){
-  cc_parent_count[[i]]<-cc_count_df[rownames(cc_count_df) %in% group_cc[[i]],]
+  cc_parent_geneRatio[[i]]<-cc_geneRatio_df[rownames(cc_geneRatio_df) %in% group_cc[[i]],]
 }
+
+
 
 names(cc_parent_df)<-names(group_cc)
-names(cc_parent_count)<-names(group_cc)
+names(cc_parent_geneRatio)<-names(group_cc)
 names(cc_means)<-names(group_cc)
 names(cc_median)<-names(group_cc)
 
 #MF:
 for(i in 1:length(mf)){
-  mf[[i]]<-mf[[i]][match(mf_total,rownames(mf[[i]])),]
+  mf[[i]]$setSize[is.na(mf[[i]]$setSize)]<-0
 }
+mf[[2]]$Count<-rep(NA,97)
+mf[[4]]$Count<-rep(NA,97)
+mf[[10]]$Count<-rep(NA,97)
+mf[[11]]$Count<-rep(NA,97)
+mf[[15]]$Count<-rep(NA,97)
+
+for(i in 1:length(mf)){
+  mf[[i]]$Count[is.na(mf[[i]]$Count)]<-0
+  mf[[i]]$geneRatio<-ifelse(mf[[i]]$setSize > 0, 
+                            mf[[i]]$Count/mf[[i]]$setSize,0)
+}
+
+
 
 fdr_mf<-list()
 for(i in 1:length(mf)){
@@ -355,31 +400,28 @@ for(i in 1:length(group_mf)){
   mf_median[[i]]<-median(mf_parent_df[[i]]$mean)
 }
 
-count_mf<-list()
+geneRatio_mf<-list()
 for(i in 1:length(mf)){
-  count_mf[[i]]<-mf[[i]]$Count
+  geneRatio_mf[[i]]<-mf[[i]]$geneRatio
 }
-count_mf[[2]]<-rep(NA,97)
-count_mf[[4]]<-rep(NA,97)
-count_mf[[10]]<-rep(NA,97)
-count_mf[[11]]<-rep(NA,97)
-count_mf[[15]]<-rep(NA,97)
 
-mf_count_df<-do.call(cbind.data.frame, count_mf)
-mf_count_df[is.na(mf_count_df)]<-0
-colnames(mf_count_df)<-names(de.dge)
-rownames(mf_count_df)<-mf_total
+mf_geneRatio_df<-do.call(cbind.data.frame, geneRatio_mf)
+mf_geneRatio_df[is.na(mf_geneRatio_df)]<-0
+colnames(mf_geneRatio_df)<-names(de.dge)
+rownames(mf_geneRatio_df)<-mf_total
 
 
-mf_parent_count<-list()
+
+
+mf_parent_geneRatio<-list()
 for(i in 1:length(group_mf)){
-  mf_parent_count[[i]]<-mf_count_df[rownames(mf_count_df) %in% group_mf[[i]],]
+  mf_parent_geneRatio[[i]]<-mf_geneRatio_df[rownames(mf_geneRatio_df) %in% group_mf[[i]],]
 }
 
 
 
 names(mf_parent_df)<-names(group_mf)
-names(mf_parent_count)<-names(group_mf)
+names(mf_parent_geneRatio)<-names(group_mf)
 names(mf_means)<-names(group_mf)
 names(mf_median)<-names(group_mf)
 
@@ -406,156 +448,90 @@ for(i in 1:length(mf_parent_df)){
 }
 
 
-###OK now lets make some plotskis
-##CC we'll plot synapse and secretory vesicle
-synapse<-cc_parent_df[[1]]
-synapse<-synapse[order(synapse$mean,decreasing=T),]
-rownames(synapse)<-go2term(rownames(synapse))$Term
-synapse<-synapse[,1:17]
-colnames(synapse)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
-  "DG", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
-  "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
-  "L6/6b", "Sub")
-synapse<-synapse[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
-
-synapse_count<-cc_parent_count[[1]]
-rownames(synapse_count)<-go2term(rownames(synapse_count))$Term
-synapse_count<-synapse_count[match(rownames(synapse),rownames(synapse_count)),]
-synapse_count<-synapse_count[,1:17]
-colnames(synapse_count)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
-                           "DG", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
-                           "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
-                           "L6/6b", "Sub")
-synapse_count<-synapse_count[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
-
-
-synapse<-synapse[c(1:5),]
-synapse_count<-synapse_count[c(1:5),]
-synapse$ID<-factor(rownames(synapse))
-synapse_melt<-melt(synapse)
-
-
-ggplot(synapse_melt, aes(x =variable, y = ID)) + 
-  geom_point(aes(colour=value,size=unlist(synapse_count))) +
-  theme(panel.background=element_blank(),
-        panel.border = element_rect(colour = "black", 
-                                    fill=NA), 
-        axis.text.x = element_text(angle = 45,
-                                   vjust=.5)) + 
-  scale_colour_gradient(low='white',
-                        high='black') +
-  scale_size_area(breaks=c(0,50,100,150,200))+
-  labs(size='Count',
-       color='-log10 adjusted P value',
-       x='Annotation',
-       y='GO Term')
-dev.off()
-
-
-ggplot(ion_melt, aes(x =variable, y = ID)) + 
-  geom_point(aes(colour=value,size=unlist(key_ion))) +
-  theme(panel.background=element_blank(),
-        panel.border = element_rect(colour = "black", 
-                                    fill=NA), 
-        axis.text.x = element_text(angle = 45,
-                                   vjust=.5),
-        text = element_text(size = 12)) + 
-  scale_colour_gradient(low='white',
-                        high='black') +
-  scale_size_area(breaks=c(0,50,100,150,200))+
-  labs(size='Count',
-       color='-log10 adjusted P value',
-       x='Annotation',
-       y='GO Term') + 
-  ggtitle('Transcription factor binding')
-
-
-
-  reducedTerms_CC$term[reducedTerms_cc$parentTerm=='glutamatergic synapse']
-
-
-
-synapse<-reducedTerms_CC$term[reducedTerms_CC$parentTerm=='glutamatergic synapse']
-
-dna<-c('DNA-binding transcription activator activity',
-       'transcription coregulator activity',
-       'transcription corepressor activity',
-       'transcription coactivator activity')
-
-DNA-binding transcription activator activity, RNA polymerase II-specific
-
-signal<-bp_reducedTerms$term[bp_reducedTerms$parentTerm=="G protein-coupled receptor signaling pathway"]
+###OK now lets make some plots
+##first, write a function to return balloon plots
+balloon_fun<-function(x,y){
+  ###set up terms for color/shading in balloon plot
+  y$mean<-x$mean
+  x<-x[order(x$mean,decreasing=T),]
+  y<-y[order(y$mean,decreasing=T),]
+  rownames(x)<-go2term(rownames(x))$Term[match(rownames(x),
+                                               go2term(rownames(x))$go_id)]
+  x<-x[,1:17]
+  colnames(x)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
+                 "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
+                 "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
+                 "L6/6b", "Sub")
+  x<-x[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
   
-  c('modulation of chemical synaptic transmission',
-          'transmembrane receptor protein tyrosine kinase signaling pathway',
-          'regulation of synaptic plasticity',
-          "G protein-coupled receptor signaling pathway")
-
-tgfb<-c('cellular response to chemical stress',
-        'cellular response to oxidative stress',
-        'response to cytokine',
-        'transforming growth factor beta receptor signaling pathway')
-cc_plot<-list()
-for(i in 1:length(cc)){
+  ###set up gene ratio for size of circles in balloon plot
+  rownames(y)<-go2term(rownames(y))$Term[match(rownames(y),
+                                               go2term(rownames(y))$go_id)]
+  y<-y[,1:17]
+  colnames(y)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
+                 "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
+                 "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
+                 "L6/6b", "Sub")
+  y<-y[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+  
+  
+  x<-x[c(1:4),]
+  y<-y[c(1:4),]
+  x$ID<-factor(rownames(x))
+  x_melt<-melt(x)
 
   
-  cc_plot[[i]]<-cc[[i]][cc[[i]]$Description %in% c(rownames(synapse)),]
-}
+  
+  pp<-ggplot(x_melt, aes(x =variable, y = ID)) + 
+    geom_point(aes(colour=value,size=unlist(y))) +
+    theme(panel.background=element_blank(),
+          panel.border = element_rect(colour = "black", 
+                                      fill=NA), 
+          axis.text.x = element_text(angle = 45,
+                                     vjust=.5)) + 
+    scale_colour_gradient(low='white',
+                          high='black',
+                          limits=c(0,17)) +
+    scale_size_area(limits=c(0,0.5))+
+    labs(size='geneRatio',
+         color='-log10 adjusted p-value',
+         x='Annotated Cell Type',
+         y='GO Term')
+  outs<-list(x,x_melt,y,pp)
+  return(outs)}
+##now, make plots
+##BP: apoptosis, growth factor signaling
+signal<-balloon_fun(x=bp_parent_df[[2]],y=bp_parent_geneRatio[[2]])
+growth<-balloon_fun(x=bp_parent_df[[11]],y=bp_parent_geneRatio[[11]])
+
+##CC: synapse, secretory vesicle
+synapse<-balloon_fun(x=cc_parent_df[[1]],y=cc_parent_geneRatio[[1]])
+#vesicle<-balloon_fun(x=cc_parent_df[[5]],y=cc_parent_geneRatio[[5]])
+
+##MF: phosphorylation and ubiquitination
+ubiq<-balloon_fun(x=mf_parent_df[[8]],y=mf_parent_geneRatio[[8]])
+kinase<-balloon_fun(x=mf_parent_df[[2]],y=mf_parent_geneRatio[[2]])
 
 
-
-cc_plot_final<-cc_plot
-for(i in 1:length(cc_plot_final)){
-  cc_plot_final[[i]]<-cc_plot_final[[i]][match(synapse,
-                                               cc_plot_final[[i]]$Description),]
-  cc_plot_final[[i]]$Description<-factor(cc_plot_final[[i]]$Description)
-}
-
-
-key<-lapply(cc_plot_final,pull,Count)
-keydf<-data.frame('ID'=synapse)
-keydf<-key
-keydf[is.na(keydf)]<-0
-keydf$ID<-NULL
-key_signal<-keydf
-
-p<-lapply(bp_plot_final,pull,p.adjust)
-for(i in 1:length(p)){
-  p[[i]][is.na(p[[i]])]<-1
-}
-
-bp_signal<-data.frame('ID'=signal)
-
-bp_signal[,2:18]<-p
-colnames(bp_signal)[2:18]<-names(de.dge)
-
-
-
-colnames(bp_signal)[2:18]<-recode(colnames(bp_signal)[2:18], 'ProS.1'='PS.1','ProS.2'='PS.2',
-                                  'RHP.L2/3'='L2/3','RHP.L5/Po'='L5/Po',
-                                  'RHP.L6/6b'='L6/6b','GABA.CGE.1'='GABA.1',
-                                  'GABA.CGE.2'='GABA.2','GABA.MGE.1'='GABA.3',
-                                  'GABA.MGE.2'='GABA.4','GABA.MGE.3'='GABA.5')
-bp_signal<-bp_signal[,c(1,7,2:6,13,14,18,15,16,17,8:12)]
-key_signal<-key_signal[,c(6,1:5,12,13,17,14,15,16,7:11)]
-
-
-bp_signal[,2:18]=-log10(bp_signal[,2:18])
-signal_melt<-melt(bp_signal)
-bp_signal<-recode(bp_signal,variable=Annotation)
-
-
-pdf('signaling.pdf',h=6,w=8)
-ggplot(signal_melt, aes(x =variable, y = ID)) + 
-  geom_point(aes(colour=value,size=unlist(value))) +
-  theme(panel.background=element_blank(),
-        panel.border = element_rect(colour = "black", 
-                                    fill=NA), 
-        axis.text.x = element_text(angle = 45,
-                                   vjust=.5)) + 
-  scale_colour_gradient(low='white',
-                        high='red') +
-  labs(size='Count',
-       color='-log10 adjusted P value')
+pdf('synapse.pdf',w=6.5,h=4)
+synapse[[4]]+ggtitle('')
 dev.off()
 
+pdf('growth.pdf',w=6.5,h=4)
+growth[[4]]+ggtitle('')
+dev.off()
+
+pdf('signal.pdf',w=6.5,h=4)
+signal[[4]]+ggtitle('')
+dev.off()
+
+pdf('kinase.pdf',w=6.5,h=4)
+kinase[[4]]+ggtitle('')
+dev.off()
+
+pdf('ubiq.pdf',w=6.5,h=4)
+ubiq[[4]]+ggtitle('')
+dev.off()
+
+save(bp_reducedTerms,cc_reducedTerms,mf_reducedTerms,
+     bp_simmatrix,cc_simmatrix,mf_simmatrix, file='go_clustering_results.rda')
