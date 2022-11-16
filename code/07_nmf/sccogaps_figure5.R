@@ -91,7 +91,7 @@ hex <- make_hexbin(sce.subset, nbins = 100,
 label_df <- make_hexbin_label(hex, col="cellType")
 
 
-pdf('hex_23.pdf',h=4,w=4)
+pdf('hex_23.pdf',h=3,w=4)
 plot_hexbin_meta(hex,col='Pattern_23',action='median') + 
   labs(title='Pattern 23',
        x = 'UMAP1', y='UMAP2',
@@ -102,7 +102,7 @@ plot_hexbin_meta(hex,col='Pattern_23',action='median') +
   scale_fill_viridis(option='turbo')
 dev.off()
 
-pdf('hex_26.pdf',h=4,w=4)
+pdf('hex_26.pdf',h=3,w=4)
 plot_hexbin_meta(hex,col='Pattern_26',action='median') + 
   labs(title='Pattern 26',
        x = 'UMAP1', y='UMAP2',
@@ -113,7 +113,7 @@ plot_hexbin_meta(hex,col='Pattern_26',action='median') +
   scale_fill_viridis(option='turbo')
 dev.off()
 
-pdf('hex_46.pdf',h=4,w=4)
+pdf('hex_46.pdf',h=3,w=4)
 plot_hexbin_meta(hex,col='Pattern_46',action='median') + 
   labs(title='Pattern 46',
        x = 'UMAP1', y='UMAP2',
@@ -124,7 +124,7 @@ plot_hexbin_meta(hex,col='Pattern_46',action='median') +
   scale_fill_viridis(option='turbo')
 dev.off()
 
-pdf('hex_55.pdf',h=4,w=4)
+pdf('hex_55.pdf',h=3,w=4)
 plot_hexbin_meta(hex,col='Pattern_55',action='median') + 
   labs(title='Pattern 55',
        x = 'UMAP1', y='UMAP2',
@@ -134,7 +134,6 @@ plot_hexbin_meta(hex,col='Pattern_55',action='median') +
                                                                    colour="black",  label.size = NA, fill = NA)+
   scale_fill_viridis(option='turbo')
 dev.off()
-
 
 
 
