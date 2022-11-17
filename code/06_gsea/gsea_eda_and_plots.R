@@ -482,8 +482,8 @@ balloon_fun<-function(x,y){
 
   
   
-  pp<-ggplot(x_melt, aes(x =variable, y = ID)) + 
-    geom_point(aes(colour=value,size=unlist(y))) +
+  pp<-ggplot(plot_go, aes(x =variable, y = ID)) + 
+    geom_point(aes(colour=value,size=size)) +
     theme(panel.background=element_blank(),
           panel.border = element_rect(colour = "black", 
                                       fill=NA), 
@@ -535,3 +535,128 @@ dev.off()
 
 save(bp_reducedTerms,cc_reducedTerms,mf_reducedTerms,
      bp_simmatrix,cc_simmatrix,mf_simmatrix, file='go_clustering_results.rda')
+
+##Fig S6
+bp_plot<-list()
+bp_ratios<-list()
+for(i in order(unlist(bp_means),decreasing=T)){
+  bp_plot[[i]]<-colMeans(bp_parent_df[[i]])
+  bp_ratios[[i]]<-colMeans(bp_parent_geneRatio[[i]])
+}
+
+bp_plot<-do.call(rbind.data.frame,bp_plot)
+bp_ratios<-do.call(rbind.data.frame,bp_ratios)
+
+colnames(bp_plot)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
+                     "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
+                     "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
+                     "L6/6b", "Sub")
+bp_plot<-bp_plot[,c(1:17)]
+rownames(bp_plot)<-names(bp_parent_df)[c(order(unlist(bp_means),decreasing=T))]
+colnames(bp_ratios)<-colnames(bp_plot)
+bp_plot<-bp_plot[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+bp_ratios<-bp_ratios[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+
+bp_plot$ID<-factor(rownames(bp_plot),levels=rownames(bp_plot))
+bp_plot_melt<-melt(bp_plot)
+bp_plot_melt$size<-unlist(bp_ratios)
+
+
+pp_bp<-ggplot(bp_plot_melt, aes(x =variable, y = ID)) + 
+  geom_point(aes(colour=value,size=size)) +
+  theme(panel.background=element_blank(),
+        panel.border = element_rect(colour = "black", 
+                                    fill=NA), 
+        axis.text.x = element_text(angle = 45,
+                                   vjust=.5)) + 
+  scale_y_discrete(limits=rev(levels(bp_plot$ID))) +
+  scale_colour_gradient(low='white',
+                        high='black') +
+  scale_size_area()+
+  labs(size='count',
+       color='mean of -log10 adjusted P values',
+       bp_plot='Annotated Cell Type',
+       bp_ratios='GO term cluster')
+
+mf_plot<-list()
+mf_ratios<-list()
+for(i in order(unlist(mf_means),decreasing=T)){
+  mf_plot[[i]]<-colMeans(mf_parent_df[[i]])
+  mf_ratios[[i]]<-colMeans(mf_parent_geneRatio[[i]])
+}
+
+mf_plot<-do.call(rbind.data.frame,mf_plot)
+mf_ratios<-do.call(rbind.data.frame,mf_ratios)
+
+colnames(mf_plot)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
+                     "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
+                     "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
+                     "L6/6b", "Sub")
+mf_plot<-mf_plot[,c(1:17)]
+rownames(mf_plot)<-names(mf_parent_df)[c(order(unlist(mf_means),decreasing=T))]
+colnames(mf_ratios)<-colnames(mf_plot)
+mf_plot<-mf_plot[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+mf_ratios<-mf_ratios[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+
+mf_plot$ID<-factor(rownames(mf_plot),levels=rownames(mf_plot))
+mf_plot_melt<-melt(mf_plot)
+mf_plot_melt$size<-unlist(mf_ratios)
+
+
+pp_mf<-ggplot(mf_plot_melt, aes(x =variable, y = ID)) + 
+  geom_point(aes(colour=value,size=size)) +
+  theme(panel.background=element_blank(),
+        panel.border = element_rect(colour = "black", 
+                                    fill=NA), 
+        axis.text.x = element_text(angle = 45,
+                                   vjust=.5)) + 
+  scale_y_discrete(limits=rev(levels(mf_plot$ID))) +
+  scale_colour_gradient(low='white',
+                        high='black') +
+  scale_size_area()+
+  labs(size='count',
+       color='mean of -log10 adjusted P values',
+       mf_plot='Annotated Cell Type',
+       mf_ratios='GO term cluster')
+
+
+cc_plot<-list()
+cc_ratios<-list()
+for(i in order(unlist(cc_means),decreasing=T)){
+  cc_plot[[i]]<-colMeans(cc_parent_df[[i]])
+  cc_ratios[[i]]<-colMeans(cc_parent_geneRatio[[i]])
+}
+
+cc_plot<-do.call(rbind.data.frame,cc_plot)
+cc_ratios<-do.call(rbind.data.frame,cc_ratios)
+
+colnames(cc_plot)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
+                     "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
+                     "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
+                     "L6/6b", "Sub")
+cc_plot<-cc_plot[,c(1:17)]
+rownames(cc_plot)<-names(cc_parent_df)[c(order(unlist(cc_means),decreasing=T))]
+colnames(cc_ratios)<-colnames(cc_plot)
+cc_plot<-cc_plot[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+cc_ratios<-cc_ratios[,c(6,12,3,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+
+cc_plot$ID<-factor(rownames(cc_plot),levels=rownames(cc_plot))
+cc_plot_melt<-melt(cc_plot)
+cc_plot_melt$size<-unlist(cc_ratios)
+
+
+pp_cc<-ggplot(cc_plot_melt, aes(x =variable, y = ID)) + 
+  geom_point(aes(colour=value,size=size)) +
+  theme(panel.background=element_blank(),
+        panel.border = element_rect(colour = "black", 
+                                    fill=NA), 
+        axis.text.x = element_text(angle = 45,
+                                   vjust=.5)) + 
+  scale_y_discrete(limits=rev(levels(cc_plot$ID))) +
+  scale_colour_gradient(low='white',
+                        high='black') +
+  scale_size_area()+
+  labs(size='count',
+       color='mean of -log10 adjusted P values',
+       cc_plot='Annotated Cell Type',
+       cc_ratios='GO term cluster')
