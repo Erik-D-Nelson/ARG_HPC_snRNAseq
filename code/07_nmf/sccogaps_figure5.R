@@ -1,4 +1,4 @@
-#cd ~/arg-hpc/
+
 ####Code for figure 5: scCoGAPS
 library(CoGAPS)
 library(scater)
@@ -8,9 +8,10 @@ library(schex)
 library(here)
 library(ggpubr)
 library(reshape2)
+library(pheatmap)
 
 ##scCoGAPS has already finished running at this point. Let's load the results
-load("2022_scCoGAPS.rda")
+load("processed_data/2022_scCoGAPS.rda")
 load("onehot_cellType.rda")
 load("onehot_condition.rda")
 ls()
@@ -65,7 +66,7 @@ ECS<-ECS[names(ECS) %in% guide]
 ECS<-rep(ECS,each=18)
 melted$ECS<-ECS
 
-pdf('test_balloon.pdf',height=4,width=9)
+pdf('nmf_balloon_plot.pdf',height=4,width=9)
 ggplot(melted, aes(x =Pattern, y = Annotation)) + 
   geom_point(aes(size=cor_annotation,color=cor_ECS)) +
   theme(panel.background=element_blank(),
@@ -136,5 +137,37 @@ plot_hexbin_meta(hex,col='Pattern_55',action='median') +
 dev.off()
 
 
+heat<-results@featureLoadings
+heat<-heat[,c(26,23,46,55)]
+prg<-c('Atf3','Ptgs2','Baz1a','Brinp1','Bdnf','Maml3','Rheb','Nrn1','Gadd45g',
+            'Arc', 'Egr3', 'Grasp', 'Sv2c', 'Sult2b1','Sstr2','Mbnl2','Cystm1',
+            'Sertad1','Slc2a3','Gpr22','Errfi1','Fndc9','Osgin2','Fam126b')
+
+heat_prg<-heat[rownames(heat) %in% prg,]
+heat_prg<-heat_prg[rev(match(prg,rownames(heat_prg))),]
+
+pdf('nmf_heatmap_prgs.pdf',h=3,w=2)
+pheatmap(heat_prg,cluster_cols=F,cluster_rows=F,scale='row')
+dev.off()
+
+srg<-c('Sema3e','Nptx2','Kcna4','Acan','Kcnj4','Gpr3','Hdac9','Kcna1','Gpr63',
+       'Trip10','Stac','Slitrk4','Mfap3l','Bmp3','Cd109',
+       'Fezf2','Palmd','Hunk','Stc2','Kcnh8')
+heat_srg<-heat[rownames(heat) %in% srg,]
+heat_srg<-heat_srg[rev(match(srg,rownames(heat_srg))),]
+
+pdf('nmf_heatmap_srgs.pdf',h=3,w=2)
+pheatmap(heat_srg,cluster_cols=F,cluster_rows=F,scale='row')
+dev.off()
+
+synapse<-c('Tanc2','Acvr1','Sntb2','Nf1','Sorcs3','Epha10','Susd4','Ston2','Lgi1',
+           'Efhd2','Actn4','Nectin1','Nrxn2','Lrfn2','Syn2','Adgra2','Plec',
+           'Svop','Amph')
+heat_synapse<-heat[rownames(heat) %in% synapse,]
+heat_synapse<-heat_synapse[rev(match(synapse,rownames(heat_synapse))),]
+
+pdf('nmf_heatmap_synapse.pdf',h=3,w=2)
+pheatmap(heat_synapse,cluster_cols=F,cluster_rows=F,scale='row')
+dev.off()
 
 

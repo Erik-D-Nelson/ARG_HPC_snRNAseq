@@ -176,4 +176,4 @@ dev.off()
 
 
 
-save(de.dge,file='specific_de_results.rda')
+save(de.dge,file='processed_data/specific_de_results.rda')

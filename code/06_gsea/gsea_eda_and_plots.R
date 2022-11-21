@@ -12,8 +12,8 @@ library(tidyverse)
 library(GOSemSim)
 
 ##We need to build some dotplots for different GO clusters
-load('specific_gsea_results.rda')
-load('de_dge.rda')
+load('processed_data/specific_gsea_results.rda')
+load('processed_data/de_dge.rda')
 
 ##get Count for each list element
 
@@ -513,23 +513,23 @@ ubiq<-balloon_fun(x=mf_parent_df[[8]],y=mf_parent_geneRatio[[8]])
 kinase<-balloon_fun(x=mf_parent_df[[2]],y=mf_parent_geneRatio[[2]])
 
 
-pdf('synapse.pdf',w=6.5,h=4)
+pdf('plots/fig4/synapse.pdf',w=6.5,h=4)
 synapse[[4]]+ggtitle('')
 dev.off()
 
-pdf('growth.pdf',w=6.5,h=4)
+pdf('plots/fig4/growth.pdf',w=6.5,h=4)
 growth[[4]]+ggtitle('')
 dev.off()
 
-pdf('signal.pdf',w=6.5,h=4)
-signal[[4]]+ggtitle('')
-dev.off()
+#pdf('plots/fig4/signal.pdf',w=6.5,h=4)
+#signal[[4]]+ggtitle('')
+#dev.off()
 
-pdf('kinase.pdf',w=6.5,h=4)
+pdf('plots/fig4/kinase.pdf',w=6.5,h=4)
 kinase[[4]]+ggtitle('')
 dev.off()
 
-pdf('ubiq.pdf',w=6.5,h=4)
+pdf('plots/fig4/ubiq.pdf',w=6.5,h=4)
 ubiq[[4]]+ggtitle('')
 dev.off()
 
@@ -561,7 +561,7 @@ bp_plot$ID<-factor(rownames(bp_plot),levels=rownames(bp_plot))
 bp_plot_melt<-melt(bp_plot)
 bp_plot_melt$size<-unlist(bp_ratios)
 
-
+pdf('plots/figS6/pp_bp.pdf',h=7,w=15)
 pp_bp<-ggplot(bp_plot_melt, aes(x =variable, y = ID)) + 
   geom_point(aes(colour=value,size=size)) +
   theme(panel.background=element_blank(),
@@ -577,6 +577,7 @@ pp_bp<-ggplot(bp_plot_melt, aes(x =variable, y = ID)) +
        color='mean of -log10 adjusted P values',
        bp_plot='Annotated Cell Type',
        bp_ratios='GO term cluster')
+dev.off()
 
 mf_plot<-list()
 mf_ratios<-list()
@@ -602,7 +603,7 @@ mf_plot$ID<-factor(rownames(mf_plot),levels=rownames(mf_plot))
 mf_plot_melt<-melt(mf_plot)
 mf_plot_melt$size<-unlist(mf_ratios)
 
-
+pdf('plots/figS6/pp_mf.pdf',h=7,w=15)
 pp_mf<-ggplot(mf_plot_melt, aes(x =variable, y = ID)) + 
   geom_point(aes(colour=value,size=size)) +
   theme(panel.background=element_blank(),
@@ -618,6 +619,7 @@ pp_mf<-ggplot(mf_plot_melt, aes(x =variable, y = ID)) +
        color='mean of -log10 adjusted P values',
        mf_plot='Annotated Cell Type',
        mf_ratios='GO term cluster')
+dev.off()
 
 
 cc_plot<-list()
@@ -644,7 +646,7 @@ cc_plot$ID<-factor(rownames(cc_plot),levels=rownames(cc_plot))
 cc_plot_melt<-melt(cc_plot)
 cc_plot_melt$size<-unlist(cc_ratios)
 
-
+pdf('plots/figS6/pp_cc.pdf',h=7,w=15)
 pp_cc<-ggplot(cc_plot_melt, aes(x =variable, y = ID)) + 
   geom_point(aes(colour=value,size=size)) +
   theme(panel.background=element_blank(),
@@ -660,3 +662,28 @@ pp_cc<-ggplot(cc_plot_melt, aes(x =variable, y = ID)) +
        color='mean of -log10 adjusted P values',
        cc_plot='Annotated Cell Type',
        cc_ratios='GO term cluster')
+dev.off()
+
+pdf('plots/figS5/mf_simmatrix.pdf',h=8,w=15)
+heatmapPlot(mf_simmatrix,
+            mf_reducedTerms,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=14,show_rownames=F,show_colnames=F)
+dev.off()
+
+pdf('plots/figS5/bp_simmatrix.pdf',h=8,w=16)
+heatmapPlot(bp_simmatrix,
+            bp_reducedTerms,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=14,show_rownames=F,show_colnames=F)
+dev.off()
+
+pdf('plots/figS5/cc_simmatrix.pdf',h=8,w=12)
+heatmapPlot(cc_simmatrix,
+            cc_reducedTerms,
+            annotateParent=TRUE,
+            annotationLabel="parentTerm",
+            fontsize=14,show_rownames=F,show_colnames=F)
+dev.off()

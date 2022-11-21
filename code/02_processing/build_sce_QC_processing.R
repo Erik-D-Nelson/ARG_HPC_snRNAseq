@@ -347,7 +347,8 @@ assay(sce.total,'logcounts')<-NULL
 reducedDim(sce.total,'PCA')<-NULL
 reducedDim(sce.total,'UMAP')<-NULL
 rowData(sce.total)<-rowData(sce.total)[,c(1,2)]
-save(sce.total,compress='xz',file='processed_data/sce_total.rda.xz')
+colData(sce.total)<-colData(sce.total)[,c(1,2,3,15)]
+#save(sce.total,compress='xz',file='processed_data/sce_total.rda.xz')
 
 
 assay(sce.subset,'poisson_pearson_residuals')<-NULL
