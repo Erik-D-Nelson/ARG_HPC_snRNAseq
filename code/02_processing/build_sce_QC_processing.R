@@ -1,20 +1,9 @@
-################################################################################
-### Martinowich mouse 10x snRNA-seq samples pre-processing
-### ** OSCA methods - using reference script:
-###   /dcl01/lieber/ajaffe/Matt/MNT_thesis/snRNAseq/10x_pilot/10x-pilot_all-Frankensteins_n13_step01_MNT28Oct2019.R
-###   PROJECT DIR: /dcl01/ajaffe/data/lab/singleCell/mouse_10x/analysis_MNT/
-###   STEP 1: Code for preprocessing data, clustering, and Fig 1 plots
-### Initiated: MNT 06Jan2020   ==#==   modified: EDN 17Nov2020
-### Modification notes: Just HPC samples
-################################################################################
+
 library(SingleCellExperiment)
-library(scRNAseq)
-library(EnsDb.Mmusculus.v79)
 library(scater)
 library(scran)
 library(scry)
 library(DropletUtils)
-library(jaffelab)
 library(gridExtra)
 library(ggplot2)
 library(dplyr)
@@ -49,8 +38,8 @@ object.size(sceList.mouse10x)
 rm(tag.2985, tag.2986, tag.2987, tag.2988)
 
 ## set names
-names(sceList.mouse10x) <- c("2985", "2986", 
-                             "2987", "2988")
+names(sceList.mouse10x) <- c("Sham1", "Sham2", 
+                             "ECS1", "ECS2")
 
 ## Get unique gene symbols
 # From Ensembl ID > Gene Symbol
@@ -64,36 +53,10 @@ for(i in 1:length(sceList.mouse10x)){
   colData(sceList.mouse10x[[i]])$Sample<-names(sceList.mouse10x[i])
 }
 
-##Bind sce.total
-sce.total<-cbind(sceList.mouse10x[[1]],sceList.mouse10x[[2]],
-                 sceList.mouse10x[[3]],sceList.mouse10x[[4]])
-
-##Add condition metadata column to colData
-colData(sce.total)$condition<-factor(
-  ifelse(
-    colData(sce.total)$Sample %in% c("2985","2986"),
-    "Sham","ECS")
-)
 # In case mess anything up
 #save(sce.total, file="mouse_hpc_ECS_preprocessing.rda")
 
 ### Quality control ============================================================
-##Start with barcode ranks plot
-#First, use barcodeRanks() to compute ranks for each barcode (each putative nucleus)
-
-br.out <- barcodeRanks(counts(sceList.mouse10x))
-
-
-pdf('plots/barcodeRanksPlot.pdf')
-plot(br.out$rank, br.out$total, log="xy", xlab="Rank", ylab="Total")
-abline(h=metadata(br.out)$inflection, col="forestgreen", lty=2)
-legend("bottomleft", lty=2, col=c("dodgerblue", "forestgreen"),
-       legend=c("knee", "inflection"))
-abline(h=metadata(br.out)$knee, col="dodgerblue", lty=2)
-abline(h=metadata(br.out)$inflection, col="forestgreen", lty=2)
-legend("bottomleft", lty=2, col=c("dodgerblue", "forestgreen"), 
-       legend=c("knee", "inflection"))
-dev.off()
 
 ##run emptyDrops
 #Doing this by sample as per recommendation by MNT
@@ -142,8 +105,9 @@ sce.total<-cbind(sceList.mouse10x[[1]],sceList.mouse10x[[2]],
 ##Add condition metadata column to colData
 colData(sce.total)$condition<-factor(
   ifelse(
-    colData(sce.total)$Sample %in% c("2985","2986"),
-    "control","seizure")
+    colData(sce.total)$Sample %in% c("Sham1","Sham2"),
+    "Sham","ECS"),
+  levels=c('Sham','ECS')
 )
 
 ## Mito rate QC
@@ -183,7 +147,7 @@ mitoCutoffs <- round(mitoCutoffs, 2)
 
 
 # Save
-save(sce.total, e.out, high.mito, file="mouse_hpc_ECS_preprocessing.rda")
+#save(sce.total, e.out, high.mito, file="processed_data/mouse_hpc_ECS_preprocessing.rda")
 
 ###Looking at high.mito hpc plots, some have quite a few cells with low features detected
 ###probably need to add both length qc step and something related to library size
@@ -199,24 +163,28 @@ colData(sce.total) <- cbind(colData(sce.total), qc.lib, qc.nexprs, discard)
 
 
 ##Plot results of library size/expressed features
-pdf("plots/n7_mouse10x_totalQCmetrics_sizeandmito_EDN19Dec2020.pdf", height=5)
+pdf("plots/QC/totalQCmetrics_sizeandmito.pdf", height=5)
 grid.arrange(
   plotColData(sce.total, y="sum", colour_by="discard") +
     scale_y_log10() + ggtitle("Total count"),
   plotColData(sce.total, y="detected", colour_by="discard") +
     scale_y_log10() + ggtitle("Detected features"),
   plotColData(sce.total, y="subsets_Mito_percent",
-              colour_by="high.mito") + ggtitle(paste0("Mito % (cutoff = ", mitoCutoffs,")")),
+              colour_by="high.mito"),
   ncol=3
 )
 
 dev.off()
 
-save(sce.total, e.out, high.mito, discard, file="mouse_hpc_ECS_preprocessing.rda")
+#save(sce.total, e.out, high.mito, discard, file="mouse_hpc_ECS_preprocessing.rda")
 
 ##discard low expressed features/small libraries
 sce.total<-sce.total[,!sce.total$discard]
 dim(sce.total)
+
+##remove all genes with 0 counts
+keep <- rowSums(counts(sce.total) > 0) > 0
+sce.total <- sce.total[keep, ]
 
 ### Normalization ============================================================
 set.seed(1000)
@@ -231,18 +199,17 @@ sce.total <- logNormCounts(sce.total)
 sce.total<-devianceFeatureSelection(sce.total, assay="counts", 
                                     fam="poisson",sorted=TRUE)
 
+pdf("plots/feature_selection/rank_vs_deviance_plot_sceTotal.pdf")
 plot(rowData(sce.total)$poisson_deviance, type="l", 
      xlab="ranked genes",
      ylab="poisson deviance", 
-     main="Feature Selection with Deviance",
+     main="Feature Selection with Deviance, all nuclei",
      ylim=c(0,500000))
-abline(v=2500)
-abline(v=5000)
-
+abline(v=5000,lty='dashed',col="red")
+dev.off()
 
 hdg<-rownames(counts(sce.total))[1:5000]
-#hdg<-rownames(counts(sce.total))[1:10000]
-#hdg<-rownames(counts(sce.total))[1:2500]
+
 
 #Run nullResiduals to calculate Pearson residuals from poisson model
 sce.total<-nullResiduals(sce.total, assay = "counts",
@@ -312,17 +279,29 @@ sce.total$doubletScore<-dbl.dens
 sce.total$doublet<-ifelse(sce.total$dbl.dens > 5, T, F)
 sce.total<-sce.total[,sce.total$doublet==FALSE]
 
+##find marker genes
+markers<-findMarkers(sce.total,pval.type='all',
+                     direction='up',group=sce.total$label)
+
+save(markers,file='processed_data/sceTotal_markerGenes.rda')
+
 ##thalamus detection and removal
-pdf('violinPlots_thalamusQC_Tcf7l2.pdf')
-plotExpression(sce.total, exprs_values = "logcounts", features='Tcf7l2',
-               x="k_50_label", colour_by="k_50_label", point_alpha=0.5, point_size=.7,
-               add_legend=F) +
-  stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median, geom = "crossbar", 
-               width = 0.3) 
+features<-c('Snap25','Tcf7l2','Zfhx3','Shox2','Ano1','Six3')
+umap<-list()
+for(i in 1:length(features)){
+  umap[[i]]<-plotUMAP(sce.total,text_by='label',colour_by=features[[i]])
+}
+
+
+pdf('plots/figS1/figS1_umaps_thalamusQC.pdf',h=9,w=8)
+grid.arrange(umap[[1]],umap[[2]],
+             umap[[3]],umap[[4]],
+             umap[[5]],umap[[6]],
+             ncol=2)
 dev.off()
 
 ##save sce.total
-save(sce.total,file='newSceTotal_postClustering_preThalamusRemoval.rda')
+save(sce.total,file='processed_data/sce_total_preThalamusRemoval.rda')
 
 ##remove thalamic clusters (express Tcf7l2)
 sce.subset<-sce.total[,!sce.total$label %in% c(5,9,14)]
@@ -332,19 +311,14 @@ rm(sce.total)
 sce.subset<-devianceFeatureSelection(sce.subset, assay="counts", 
                                      fam="poisson",sorted=TRUE)
 
-#pdf('plots/rankedGenes_vs_poissonDeviance_newSceSubset.pdf')
+pdf('plots/feature_selection/rank_vs_poissonDeviance_sceSubset.pdf')
 plot(rowData(sce.subset)$poisson_deviance, type="l", 
      xlab="ranked genes",
      ylab="poisson deviance", 
      main="Feature Selection with Deviance",
      ylim=c(0,500000))
-abline(v=1000,col='blue')
-abline(v=3000,col='red')
-abline(v=4000,col='green')
-abline(v=5000,col='yellow')
-abline(v=2000)
+abline(v=3000,col='red',lty='dashed')
 dev.off()
-
 hdg<-rownames(counts(sce.subset))[1:3000]
 
 #Run nullResiduals to calculate Pearson residuals from poisson model
@@ -364,49 +338,26 @@ sce.subset <- runUMAP(sce.subset, dimred="PCA")
 ncol(reducedDim(sce.subset, "PCA"))
 
 
-save(sce.subset,hdg,file="/users/enelson/newSceSubset_postThalRemoval_preClusteredPCs.rda")
+save(sce.subset,hdg,file="processed_data/sce_subset.rda")
 
 
-###move on to figure 1 plots script
+#Make sce objects for GitHub release
+assay(sce.total,'poisson_pearson_residuals')<-NULL
+assay(sce.total,'logcounts')<-NULL
+reducedDim(sce.total,'PCA')<-NULL
+reducedDim(sce.total,'UMAP')<-NULL
+rowData(sce.total)<-rowData(sce.total)[,c(1,2)]
+save(sce.total,compress='xz',file='processed_data/sce_total.rda.xz')
+
+
+assay(sce.subset,'poisson_pearson_residuals')<-NULL
+assay(sce.subset,'logcounts')<-NULL
+reducedDim(sce.subset,'PCA')<-NULL
+reducedDim(sce.subset,'UMAP')<-NULL
+rowData(sce.subset)<-rowData(sce.subset)[,c(1,2)]
+colData(sce.subset)<-colData(sce.subset)[,c(1,2,3,21,24,25)]
+save(sce.subset,compress='xz',file='processed_data/sce_subset.rda.xz')
 
 
 
-
-
-
-
-
-
-##extra code
-sample_id_names<- names(table(sce.total$Sample))
-names(sample_id_names)<-sample_id_names
-
-sample_id_rse<- map(sample_id_names,~sce.total[,sce.total$Sample==.x])
-## To speed up, run on sample-level top-HVGs - just take top 1000 ===
-pilot.data.normd <- map(sample_id_rse, ~logNormCounts(.x))
-#geneVar.samples <- map(pilot.data.normd, ~modelGeneVar(.x))
-#topHVGs <- map(geneVar.samples, ~getTopHVGs(.x, n = 2000))
-
-# Generate doublet density scores
-set.seed(109)
-dbl.dens.focused <- map(names(pilot.data.normd), ~computeDoubletDensity(pilot.data.normd[[.x]], subset.row=hdg,dims=50))
-names(dbl.dens.focused) <- names(pilot.data.normd)
-
-for(i in names(sample_id_rse)){
-  pilot.data.normd[[i]]$doublet.score <- dbl.dens.focused[[i]]
-}
-ref<-rbind(colData(pilot.data.normd[[1]]),colData(pilot.data.normd[[2]]),
-           colData(pilot.data.normd[[3]]),colData(pilot.data.normd[[4]]))
-identical(colnames(sce.total),rownames(ref))
-
-for(i in names(sample_id_rse)){
-  pilot.data.normd[[i]]$doubletScore <- dbl.dens.focused[[i]]
-}
-
-func<-function(x){
-  for(i in 1:x){
-    b[[i]]<-ifelse(sce.total$doublet.score > i,T,F)
-    test[[i]]<-table(sce.total$doublet.score)
-  }}
-
-
+###move on to clustering/annotation/figure 1 plots 

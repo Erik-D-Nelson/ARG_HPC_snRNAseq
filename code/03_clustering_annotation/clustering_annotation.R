@@ -7,7 +7,7 @@ library(pheatmap)
 library(schex)
 library(viridis)
 
-load("/users/enelson/sceSubset.rda")
+load("processed_data/sce_subset.rda")
 
 
 ### Clustering ============================================================
@@ -35,8 +35,10 @@ sce.subset$annotation <- annotationTab$annotation[match(sce.subset$k_25_label,
                                                            annotationTab$cluster)]
 
 ###Marker gene detection=====================================================
-#marks<-findMarkers(sce.subset,pval.type='all',
-#                  direction='up',group=sce.subset$annotation)
+markers<-findMarkers(sce.subset,pval.type='all',
+                  direction='up',group=sce.subset$annotation)
+
+save(markers,file='processed_data/sceSubset_markerGenes.rda')
 
 ##make cellType factor for plots
 sce.subset$cellType<-as.character(sce.subset$annotation)
@@ -89,63 +91,29 @@ features=c('Slc17a7','Gad2','Prox1',
            'Pamr1','Foxp2','Ndnf','Htr3a',
            'Lhx6','Lamp5','Pvalb','Sst')
 
-pdf('dotPlot_clusterMarkers.pdf',h=6.5,w=12)
-plotDots(sce,group='cellType',features=features,color=c('white','red')) + 
+#pdf('dotPlot_clusterMarkers.pdf',h=6.5,w=12)
+plotDots(sce.subset,group='cellType',features=features,color=c('white','red')) + 
   scale_y_discrete(limits=rev(features)) +
   theme(axis.text.x = element_text(angle = 45,vjust=0.75),text = element_text(size = 20))
+#dev.off()
+
+
+##Make plots for fig s2
+features=c('Zbtb20','Satb2',
+           'Ntng2','Cux1',
+           'Dcn', 'Cux2',
+           'Nos1', 'Pamr1',
+           'Fras1','Sema5b',
+           'Ndst4','Foxp2',
+           'Cntn6','Cobll1',
+           'Fn1', 'Ctgf')
+pdf('figS1.pdf',w=8,h=11)
+plotExpression(sce.subset,features=features,
+               x="annotation", colour_by="annotation", point_alpha=0.5, point_size=.7,add_legend=F)+
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", 
+               width = 0.3)+
+  theme(axis.text.x = element_text(angle = 45))
 dev.off()
 
-
-save(sce.subset, hdg, pc.choice.hpc,marks,file="/users/enelson/20210907_sceSubset_postClustering_moreHDG_k20&20_clusteredPCs.rda")
+save(sce.subset, hdg, pc.choice.hpc,marks,file="sce_subset.rda")
 ##Proceed to figure 2 plots
-
-
-
-
-
-##UMAP by annotation for figure 1
-pdf('20210913_UMAP_byAnnotation.pdf',h=7,w=7)
-plotUMAP(sce.subset,colour_by='k_20_label',
-         text_by='annotation',text_size=3,add_legend=F) 
-dev.off()
-
-
-
-CA3.1_cor<-list()
-for(i in 1:length(enrich_CA3.1$geneID)){
-CA3.1_cor[[i]]<-as.vector(strsplit(enrich_CA3.1$geneID, "/")[[i]])}
-
-
-##CA field and DG-specific violin plots by cellType for figure S1
-markers.custom<-list(
-  'CA fields + dentate gyrus' = 'Zbtb20',
-  'CA1' = 'Fibcd1',
-  'DG' = 'Prox1',
-  'CA3 + CA4' = 'Galnt3'
-)
-pdf('20210923_violinPlots_bycellType.pdf',h=6,w=4)
-for(i in 1:length(markers.custom)){
-  print(
-    plotExpression(sce.subset, exprs_values = "logcounts", features=c('Zbtb20'),
-                   x="k_25_label", colour_by="k_20_label", point_alpha=0.5, point_size=.7,
-                   add_legend=F) +
-      stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median, geom = "crossbar", 
-                   width = 0.3) + 
-      ggtitle(label=(names(markers.custom)[i])) +
-      theme(axis.text.x = element_text(angle = 90))
-  )}
-dev.off()
-
-
-sce$annotation<-factor(sce$annotation,
-    levels=c("DG.1","DG.2","CA4","CA3.1","CA3.2","CA2",
-              "CA1","PS.1","PS.2","Sub","L2/3.1","L2/3.2",
-              "L2/3.3","L2/3.4","L2/3.5","L2/3.6","L2/3.7",
-              "L5/Po.1","L5/Po.2","L6.1","L6.2","L6.3","L6b",
-              "GABA.1","GABA.2","GABA.3","GABA.4","GABA.5"))
-
-sce$cellType<-factor(sce$cellType,
-                       levels=c("DG.1","DG.2","CA4","CA3.1","CA3.2","CA2",
-                                "CA1","PS.1","PS.2","Sub","L2/3",
-                                "L5/Po","L6/6b",
-                                "GABA.1","GABA.2","GABA.3","GABA.4","GABA.5"))
