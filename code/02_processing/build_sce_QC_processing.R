@@ -11,6 +11,7 @@ library(bluster)
 library(pheatmap)
 
 
+
 ## Read in raw UMI x barcode matrix - **use pre-mRNA-aligned reads
 ## 4 mouse HPC samples (all NeuN-sorts); 2 ECS (2987, 2988), 2 sham (2985, 2986)
 path.2985hpc.neun <- file.path("/dcl01/ajaffe/data/lab/singleCell/mouse_10x/premRNA/tag2985_hpc_premRNA/outs/raw_feature_bc_matrix")
@@ -294,10 +295,7 @@ for(i in 1:length(features)){
 
 
 pdf('plots/figS1/figS1_umaps_thalamusQC.pdf',h=9,w=8)
-grid.arrange(umap[[1]],umap[[2]],
-             umap[[3]],umap[[4]],
-             umap[[5]],umap[[6]],
-             ncol=2)
+grid.arrange(grobs=umap, ncol=2)
 dev.off()
 
 ##save sce.total
@@ -342,22 +340,22 @@ save(sce.subset,hdg,file="processed_data/sce_subset.rda")
 
 
 #Make sce objects for GitHub release
-assay(sce.total,'poisson_pearson_residuals')<-NULL
-assay(sce.total,'logcounts')<-NULL
-reducedDim(sce.total,'PCA')<-NULL
-reducedDim(sce.total,'UMAP')<-NULL
-rowData(sce.total)<-rowData(sce.total)[,c(1,2)]
-colData(sce.total)<-colData(sce.total)[,c(1,2,3,15)]
-#save(sce.total,compress='xz',file='processed_data/sce_total.rda.xz')
-
-
-assay(sce.subset,'poisson_pearson_residuals')<-NULL
-assay(sce.subset,'logcounts')<-NULL
-reducedDim(sce.subset,'PCA')<-NULL
-reducedDim(sce.subset,'UMAP')<-NULL
-rowData(sce.subset)<-rowData(sce.subset)[,c(1,2)]
-colData(sce.subset)<-colData(sce.subset)[,c(1,2,3,21,24,25)]
-save(sce.subset,compress='xz',file='processed_data/sce_subset.rda.xz')
+# assay(sce.total,'poisson_pearson_residuals')<-NULL
+# assay(sce.total,'logcounts')<-NULL
+# reducedDim(sce.total,'PCA')<-NULL
+# reducedDim(sce.total,'UMAP')<-NULL
+# rowData(sce.total)<-rowData(sce.total)[,c(1,2)]
+# colData(sce.total)<-colData(sce.total)[,c(1,2,3,15)]
+# #save(sce.total,compress='xz',file='processed_data/sce_total.rda.xz')
+# 
+# 
+# assay(sce.subset,'poisson_pearson_residuals')<-NULL
+# assay(sce.subset,'logcounts')<-NULL
+# reducedDim(sce.subset,'PCA')<-NULL
+# reducedDim(sce.subset,'UMAP')<-NULL
+# rowData(sce.subset)<-rowData(sce.subset)[,c(1,2)]
+# colData(sce.subset)<-colData(sce.subset)[,c(1,2,3,21,24,25)]
+# save(sce.subset,compress='xz',file='processed_data/sce_subset.rda.xz')
 
 
 

@@ -107,7 +107,7 @@ features=c('Zbtb20','Satb2',
            'Ndst4','Foxp2',
            'Cntn6','Cobll1',
            'Fn1', 'Ctgf')
-pdf('figS1.pdf',w=8,h=11)
+pdf('plots/figS2/figS2.pdf',w=8,h=11)
 plotExpression(sce.subset,features=features,
                x="annotation", colour_by="annotation", point_alpha=0.5, point_size=.7,add_legend=F)+
   stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", 

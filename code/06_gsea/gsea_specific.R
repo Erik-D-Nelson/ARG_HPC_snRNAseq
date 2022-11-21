@@ -28,14 +28,14 @@ t[[i]]<-t[[i]][order(t[[i]],decreasing=T)]
 }
 names(t)<-names(de.dge)
 ###We have our ordered gene list now! Let's start by running gsea for GO terms
-#To start, let's do gene sets size 25-500, but we can increase minSetSize later
+#To start, let's do gene sets size 100-500, but we can change minSetSize later
 #if needed
 go_CC<-list()
 for(i in 1:length(t)){
 go_CC <- gseGO(geneList   = t[[i]],
                OrgDb        = org.Mm.eg.db,
                ont          = "CC",
-               minGSSize    = 25,
+               minGSSize    = 100,
                maxGSSize    = 500,
                pvalueCutoff = 0.05,
                eps          = 0,
@@ -48,7 +48,7 @@ for(i in 1:length(t)){
   go_BP <- gseGO(geneList   = t[[i]],
                  OrgDb        = org.Mm.eg.db,
                  ont          = "BP",
-                 minGSSize    = 25,
+                 minGSSize    = 100,
                  maxGSSize    = 500,
                  pvalueCutoff = 0.05,
                  eps          = 0,
@@ -61,7 +61,7 @@ for(i in 1:length(t)){
   go_MF <- gseGO(geneList   = t[[i]],
                  OrgDb        = org.Mm.eg.db,
                  ont          = "MF",
-                 minGSSize    = 25,
+                 minGSSize    = 100,
                  maxGSSize    = 500,
                  pvalueCutoff = 0.05,
                  eps          = 0,

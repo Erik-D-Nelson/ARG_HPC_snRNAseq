@@ -458,21 +458,13 @@ balloon_fun<-function(x,y){
   rownames(x)<-go2term(rownames(x))$Term[match(rownames(x),
                                                go2term(rownames(x))$go_id)]
   x<-x[,1:17]
-  colnames(x)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
-                 "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
-                 "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
-                 "L6/6b", "Sub")
-  x<-x[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+  x<-x[,c(11,3,15,1,8,16,10,4,17,6,7,9,5,12,14,2,13)]
   
   ###set up gene ratio for size of circles in balloon plot
   rownames(y)<-go2term(rownames(y))$Term[match(rownames(y),
                                                go2term(rownames(y))$go_id)]
   y<-y[,1:17]
-  colnames(y)<-c("CA1", "CA2", "CA3.1", "CA3.2", "CA4",
-                 "GC", "GABA.1", "GABA.2", "GABA.3", "GABA.4",
-                 "GABA.5", "PS.1", "PS.2", "L2/3", "L5/Po",
-                 "L6/6b", "Sub")
-  y<-y[,c(6,3,12,1,9,13,11,4,17,7,8,10,5,14,16,2,15)]
+  x<-x[,c(11,3,15,1,8,16,10,4,17,6,7,9,5,12,14,2,13)]
   
   
   x<-x[c(1:4),]

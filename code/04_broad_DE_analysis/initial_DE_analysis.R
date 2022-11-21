@@ -109,4 +109,10 @@ dev.off()
 
 save(summed,x,res,enrich_go,file='processed_data/initial_de_analysis.rda')
 
+##Pvalue histogram
+dist<-ggplot(as.data.frame(res),aes(x=PValue))+ geom_histogram(bins=30)
+
+pdf('plots/figS3/figS3.pdf',h=15,w=15)
+dist
+dev.off()
 
