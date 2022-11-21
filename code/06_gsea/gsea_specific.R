@@ -7,7 +7,7 @@ library(clusterProfiler)
 library(AnnotationDbi)
 
 ###First, load the cell type specific stats and get t-stats
-load("de_dge.rda")
+load('processed_data/specific_de_results.rda')
 
 for(i in 1:length(de.dge)){
 de.dge[[i]]$entrez = mapIds(org.Mm.eg.db,
@@ -71,5 +71,5 @@ print(go_MF[[3]])
 
 ##We now have GSEA results for all 3 GO ontology groups
 #Let's save and start on exploring the results and making plots.
-save(go_CC,go_BP,go_MF,t,file='specific_gsea_results.rda')
+save(go_CC,go_BP,go_MF,t,file='processed_data/specific_gsea_results.rda')
 ##

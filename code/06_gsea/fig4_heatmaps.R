@@ -5,24 +5,32 @@ load('de_dge.rda')
 
 ##pull out the FDRs for heatmaps
 heat_all<-data.frame(
-  'GC'<-de.dge[[6]]$logFC,
+  'GC'<-de.dge[[11]]$logFC,
   'CA3'<-de.dge[[3]]$logFC,
-  'PS'<-de.dge[[12]]$logFC,
+  'PS'<-de.dge[[15]]$logFC,
   'CA1'<-de.dge[[1]]$logFC,
   row.names=rownames(de.dge[[1]])
 )
 colnames(heat_all)<-c('GC','CA3','PS','CA1')
 #heat_all[is.na(heat_all)]<-0
 
+is.de <- decideTestsPerLabel(de.dge, threshold=0.05)
+is.de<-as.data.frame(is.de)
+DEG.GC<-rownames(is.de)[is.de$DG %in% c(1)]
+DEG.CA1<-rownames(is.de)[is.de$CA1 %in% c(1)]
+DEG.CA3.1<-rownames(is.de)[is.de$CA3.1 %in% c(1)]
+DEG.PS.1<-rownames(is.de)[is.de$ProS.1 %in% c(1)]
+
+
 syn<-rownames(cc_parent_df[[1]])
 growth<-rownames(bp_parent_df[[11]])
 ubiq<-rownames(mf_parent_df[[8]])
 kinases<-rownames(mf_parent_df[[2]])
 
-GC<-de.dge[[6]][rownames(de.dge[[6]]) %in% DEG.GC,]
+GC<-de.dge[[11]][rownames(de.dge[[11]]) %in% DEG.GC,]
 CA1<-de.dge[[1]][rownames(de.dge[[1]]) %in% DEG.CA1,]
 CA3<-de.dge[[3]][rownames(de.dge[[3]]) %in% DEG.CA3,]
-PS<-de.dge[[12]][rownames(de.dge[[12]]) %in% DEG.PS,]
+PS<-de.dge[[15]][rownames(de.dge[[15]]) %in% DEG.PS,]
 
 ##function to find genes with heterogeneous DE patterns across cell types
 find_genes<-function(x,y,z){
