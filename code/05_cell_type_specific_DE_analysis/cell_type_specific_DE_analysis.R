@@ -177,3 +177,14 @@ dev.off()
 
 
 save(de.dge,file='processed_data/specific_de_results.rda')
+
+##pvalue histograms
+dist<-list()
+for(i in 1:length(de.dge)){  
+  dist[[i]]<-ggplot(as.data.frame(de.dge[[i]]),aes(x=PValue))+
+    geom_histogram(bins=50)+
+    ggtitle(paste0('Gene PValue Histogram: ',names(de.dge)[i]))}
+
+pdf('plots/figS4/figS4.pdf',h=15,w=15)
+grid.arrange(grobs=dist)
+dev.off()
