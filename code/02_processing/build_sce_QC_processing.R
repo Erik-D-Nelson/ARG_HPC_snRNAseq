@@ -9,7 +9,10 @@ library(ggplot2)
 library(dplyr)
 library(bluster)
 library(pheatmap)
-
+library(AnnotationDbi)
+library(org.Mm.eg.db)
+library(EnsDb.Mmusculus.v79)
+library(scDblFinder)
 
 
 ## Read in raw UMI x barcode matrix - **use pre-mRNA-aligned reads
@@ -64,11 +67,11 @@ for(i in 1:length(sceList.mouse10x)){
 e.out<-list()
 
 for(i in 1:length(sceList.mouse10x)){
-set.seed(73812)
-e.out[[i]] <- emptyDrops(counts(sceList.mouse10x[[i]]),niters=15000)
-
-str(e.out[[i]], max.level=1)
-print(table(Signif = e.out[[i]]$FDR <= 0.001, Limited = e.out[[i]]$Limited))
+  set.seed(73812)
+  e.out[[i]] <- emptyDrops(counts(sceList.mouse10x[[i]]),niters=15000)
+  
+  str(e.out[[i]], max.level=1)
+  print(table(Signif = e.out[[i]]$FDR <= 0.001, Limited = e.out[[i]]$Limited))
 }
 
 #Limited
@@ -94,10 +97,10 @@ print(table(Signif = e.out[[i]]$FDR <= 0.001, Limited = e.out[[i]]$Limited))
 
 # Subset:
 for(i in 1:length(sceList.mouse10x)){
-sceList.mouse10x[[i]] <- sceList.mouse10x[[i]][ ,which(e.out[[i]]$FDR <= 0.001)]
+  sceList.mouse10x[[i]] <- sceList.mouse10x[[i]][ ,which(e.out[[i]]$FDR <= 0.001)]
 }
 # Check
-dim(sceList.10x)
+lapply(sceList.mouse10x,dim)
 
 ##Bind sce.total
 sce.total<-cbind(sceList.mouse10x[[1]],sceList.mouse10x[[2]],
@@ -110,6 +113,8 @@ colData(sce.total)$condition<-factor(
     "Sham","ECS"),
   levels=c('Sham','ECS')
 )
+
+save(sce.total,file='sce_total_preThalamusRemoval.rda')
 
 ## Mito rate QC
 #table(rownames(sce.total[[4]])==rownames(sce.total[[1]]))  # and checked various other pairs
@@ -131,15 +136,17 @@ high.mito.table <- table(high.mito)
 ## look at %mito
 high.mito.table["TRUE"]/sum(high.mito.table)  
 attributes(high.mito)
+colData(sce.total) <- cbind(colData(sce.total), stats)
+sce.total$high.mito<-high.mito
 
 
-plotColData(sce.total, x = "Sample", y="subsets_Mito_percent",
-            colour_by="high.mito.sample") + geom_hline(yintercept = attr(high.mito, "thresholds")["higher"])
+#plotColData(sce.total, x = "Sample", y="subsets_Mito_percent",
+#            colour_by="high.mito") + geom_hline(yintercept = attr(high.mito, "thresholds")["higher"])
 # Save original for comparison/plotting (optional)
 #sce.total.unfiltered <- sce.total   #[7] "subsets_Mito_sum"      "subsets_Mito_detected" "subsets_Mito_percent"   * <- these three added by that 'subsets' arg
 #[10] "total"
 ## Bind stats to each SCE
-colData(sce.total) <- cbind(colData(sce.total), stats)
+
 
 
 mitoCutoffs <- attributes(high.mito)$thresholds["higher"]
@@ -164,15 +171,15 @@ colData(sce.total) <- cbind(colData(sce.total), qc.lib, qc.nexprs, discard)
 
 
 ##Plot results of library size/expressed features
-pdf("plots/QC/totalQCmetrics_sizeandmito.pdf", height=5)
+pdf("plots/totalQCmetrics_sizeandmito.pdf", height=5)
 grid.arrange(
-  plotColData(sce.total, y="sum", colour_by="discard") +
+  plotColData(sce.total, x='Sample', y="sum", colour_by="discard") +
     scale_y_log10() + ggtitle("Total count"),
-  plotColData(sce.total, y="detected", colour_by="discard") +
+  plotColData(sce.total, x='Sample', y="detected", colour_by="discard") +
     scale_y_log10() + ggtitle("Detected features"),
-  plotColData(sce.total, y="subsets_Mito_percent",
+  plotColData(sce.total, x='Sample', y="subsets_Mito_percent",
               colour_by="high.mito"),
-  ncol=3
+  ncol=1
 )
 
 dev.off()
@@ -200,7 +207,7 @@ sce.total <- logNormCounts(sce.total)
 sce.total<-devianceFeatureSelection(sce.total, assay="counts", 
                                     fam="poisson",sorted=TRUE)
 
-pdf("plots/feature_selection/rank_vs_deviance_plot_sceTotal.pdf")
+pdf("plots/rank_vs_deviance_plot_sceTotal.pdf")
 plot(rowData(sce.total)$poisson_deviance, type="l", 
      xlab="ranked genes",
      ylab="poisson deviance", 
@@ -220,7 +227,7 @@ sce.total<-nullResiduals(sce.total, assay = "counts",
 ### Dimensionality Reduction ============================================================
 set.seed(1000) 
 sce.total <- runPCA(sce.total,exprs_values="poisson_pearson_residuals", 
-                    subset_row=hdg,ncomponents=50) 
+                    subset_row=hdg,ncomponents=100) 
 reducedDimNames(sce.total)
 
 set.seed(100000)
@@ -236,9 +243,33 @@ colData(sce.total)$label <- factor(clust50)
 table(colData(sce.total)$label)
 
 ##doublet detection and removal
-set.seed(104900)
-dbl.dens <- computeDoubletDensity(sce.subset, subset.row=hdg, 
-                                  dims=ncol(reducedDim(sce.subset)))
+sample_id_names<- names(table(sce.total$Sample))
+names(sample_id_names)<-sample_id_names
+
+sample_id_rse<- map(sample_id_names,~sce.total[,sce.total$Sample==.x])
+## To speed up, run on sample-level top-HVGs - just take top 1000 ===
+pilot.data.normd <- map(sample_id_rse, ~logNormCounts(.x))
+#geneVar.samples <- map(pilot.data.normd, ~modelGeneVar(.x))
+#topHVGs <- map(geneVar.samples, ~getTopHVGs(.x, n = 2000))
+
+# Generate doublet density scores
+set.seed(109)
+dbl.dens.focused <- map(names(pilot.data.normd), ~computeDoubletDensity(pilot.data.normd[[.x]], subset.row=hdg,dims=50))
+names(dbl.dens.focused) <- names(pilot.data.normd)
+
+for(i in names(sample_id_rse)){
+  pilot.data.normd[[i]]$doublet.score <- dbl.dens.focused[[i]]
+}
+ref<-rbind(colData(pilot.data.normd[[1]]),colData(pilot.data.normd[[2]]),
+           colData(pilot.data.normd[[3]]),colData(pilot.data.normd[[4]]))
+identical(colnames(sce.total),rownames(ref))
+
+for(i in names(sample_id_rse)){
+  pilot.data.normd[[i]]$doubletScore <- dbl.dens.focused[[i]]
+}
+
+dbl.dens<-lapply(d,c)
+
 summary(dbl.dens)
 
 quantile(dbl.dens, probs=seq(0,1,by=0.01),3)
@@ -275,9 +306,16 @@ quantile(dbl.dens, probs=seq(0,1,by=0.01),3)
 #4.5573262  9.0132210 27.0081280
 
 
+
+
+save(sce.total,file='sce_total_preThalamusRemoval.rda')
+
 ##remove putative doublets
-sce.total$doubletScore<-dbl.dens
-sce.total$doublet<-ifelse(sce.total$dbl.dens > 5, T, F)
+dubs<-do.call(cbind,pilot.data.normd)
+dubs<-dubs[,match(colnames(sce.total),colnames(dubs))]
+sce.total$doubletScore<-dubs$doubletScore
+rm(dubs,pilot.data.normd)
+colData(sce.total)$doublet<-ifelse(sce.total$doubletScore > 5, T, F)
 sce.total<-sce.total[,sce.total$doublet==FALSE]
 
 ##find marker genes
@@ -285,7 +323,6 @@ markers<-findMarkers(sce.total,pval.type='all',
                      direction='up',group=sce.total$label)
 
 save(markers,file='processed_data/sceTotal_markerGenes.rda')
-
 ##thalamus detection and removal
 features<-c('Snap25','Tcf7l2','Zfhx3','Shox2','Ano1','Six3')
 umap<-list()
@@ -294,12 +331,12 @@ for(i in 1:length(features)){
 }
 
 
-pdf('plots/figS1/figS1_umaps_thalamusQC.pdf',h=9,w=8)
+pdf('plots/figS1_umaps_thalamusQC.pdf',h=9,w=8)
 grid.arrange(grobs=umap, ncol=2)
 dev.off()
 
 ##save sce.total
-save(sce.total,file='processed_data/sce_total_preThalamusRemoval.rda')
+save(sce.total,file='sce_total_preThalamusRemoval.rda')
 
 ##remove thalamic clusters (express Tcf7l2)
 sce.subset<-sce.total[,!sce.total$label %in% c(5,9,14)]
@@ -309,7 +346,7 @@ rm(sce.total)
 sce.subset<-devianceFeatureSelection(sce.subset, assay="counts", 
                                      fam="poisson",sorted=TRUE)
 
-pdf('plots/feature_selection/rank_vs_poissonDeviance_sceSubset.pdf')
+pdf('plots/rank_vs_poissonDeviance_sceSubset.pdf')
 plot(rowData(sce.subset)$poisson_deviance, type="l", 
      xlab="ranked genes",
      ylab="poisson deviance", 
@@ -334,9 +371,14 @@ sce.subset <- runUMAP(sce.subset, dimred="PCA")
 
 #Verify length
 ncol(reducedDim(sce.subset, "PCA"))
+sce.subset
 
+pdf('umap.pdf')
+plotUMAP(sce.subset,colour_by='k_25_label',text_by='k_25_label')
+dev.off()
 
-save(sce.subset,hdg,file="processed_data/sce_subset.rda")
+save(sce.subset,hdg,file="sce_subset.rda")
+
 
 
 #Make sce objects for GitHub release
