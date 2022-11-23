@@ -13,6 +13,7 @@ library(AnnotationDbi)
 library(org.Mm.eg.db)
 library(EnsDb.Mmusculus.v79)
 library(scDblFinder)
+library(purrr)
 
 
 ## Read in raw UMI x barcode matrix - **use pre-mRNA-aligned reads
@@ -267,8 +268,11 @@ identical(colnames(sce.total),rownames(ref))
 for(i in names(sample_id_rse)){
   pilot.data.normd[[i]]$doubletScore <- dbl.dens.focused[[i]]
 }
-
-dbl.dens<-lapply(d,c)
+d<-list()
+for(i in 1:length(pilot.data.normd)){
+  d[[i]]<-pilot.data.normd[[i]]$doubletScore
+}
+dbl.dens<-do.call(c,d)
 
 summary(dbl.dens)
 
@@ -311,10 +315,13 @@ quantile(dbl.dens, probs=seq(0,1,by=0.01),3)
 save(sce.total,file='sce_total_preThalamusRemoval.rda')
 
 ##remove putative doublets
-dubs<-do.call(cbind,pilot.data.normd)
-dubs<-dubs[,match(colnames(sce.total),colnames(dubs))]
-sce.total$doubletScore<-dubs$doubletScore
-rm(dubs,pilot.data.normd)
+a<-colData(pilot.data.normd[[1]])
+b<-colData(pilot.data.normd[[2]])
+c<-colData(pilot.data.normd[[3]])
+d<-colData(pilot.data.normd[[4]])
+x<-rbind(a,b,c,d)
+sce.total$doubletScore<-x$doubletScore
+rm(x,pilot.data.normd)
 colData(sce.total)$doublet<-ifelse(sce.total$doubletScore > 5, T, F)
 sce.total<-sce.total[,sce.total$doublet==FALSE]
 
