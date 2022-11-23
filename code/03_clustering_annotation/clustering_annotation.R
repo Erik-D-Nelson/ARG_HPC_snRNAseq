@@ -13,7 +13,7 @@ load("processed_data/sce_subset.rda")
 ### Clustering ============================================================
 g25 <- buildSNNGraph(sce.subset, k=25, use.dimred = 'PCA')
 clust25 <- igraph::cluster_walktrap(g25)$membership
-colData(sce.subset)$k_25_label <- factor(clust20)
+colData(sce.subset)$k_25_label <- factor(clust25)
 table(colData(sce.subset)$k_25_label)
 
 ###Annotation=============================================================
