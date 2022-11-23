@@ -45,12 +45,14 @@ x<-as.data.frame(res)
 x<-x[x$FDR<=0.05,]
 
 
-#grouped heatmap for figure 2
+#grouped heatmaps for figure 2
 pdf('plots/fig2/heatmap_ARGs_bySample.pdf',w=4,h=3)
-features=c('Arc' , 'Egr3', 'Gadd45b', 'Junb',
-           'Baz1a','Brinp1','Grasp','Bdnf',
-           'Nptx2','Mfap3l','Kcna1','Kcnj2')
-plotGroupedHeatmap(sce.subset,features=features,cluster_rows=F,cluster_cols=F,group='Sample',center=T,fontsize=11)
+features=list("rPRG"<-c('Arc' , 'Egr3', 'Gadd45b', 'Junb'),
+           "dPRG"<-c('Baz1a','Brinp1','Grasp','Bdnf'),
+           "SRG"<-c('Nptx2','Mfap3l','Kcna1','Kcnj2'))
+for(i in 1:length(features)){
+plotGroupedHeatmap(sce.subset,features=features[[i]],cluster_rows=F,cluster_cols=F,
+                   group='Sample',center=T,fontsize=11)}
 dev.off()
 
 ##volcano plot
@@ -97,6 +99,7 @@ p2
 dev.off()
 
 #GO analysis for figure 2
+x<-x[x$logFC > 0,]
 enrich_go <- enrichGO(gene = x$ID,
                       OrgDb = org.Mm.eg.db, keyType = "ENSEMBL", ont = "BP",
                       pAdjustMethod = "BH", pvalueCutoff = 0.01, qvalueCutoff = 0.05)
@@ -104,7 +107,7 @@ enrich_go <- enrichGO(gene = x$ID,
 
 ## Visualize enrichment results
 pdf('plots/fig2/barplot_GOanalysis_10cats.pdf',h=6,w=4.25)
-barplot(enrich_up, font.size = 11,showCategory=10)
+barplot(enrich_go, font.size = 11,showCategory=10)
 dev.off()
 
 save(summed,x,res,enrich_go,file='processed_data/initial_de_analysis.rda')
@@ -115,4 +118,3 @@ dist<-ggplot(as.data.frame(res),aes(x=PValue))+ geom_histogram(bins=30)
 pdf('plots/figS3/figS3.pdf',h=15,w=15)
 dist
 dev.off()
-
