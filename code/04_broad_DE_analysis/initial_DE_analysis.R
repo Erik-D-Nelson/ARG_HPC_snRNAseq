@@ -45,14 +45,13 @@ x<-as.data.frame(res)
 x<-x[x$FDR<=0.05,]
 
 
-#grouped heatmaps for figure 2
-pdf('plots/fig2/heatmap_ARGs_bySample.pdf',w=4,h=3)
-features=list("rPRG"<-c('Arc' , 'Egr3', 'Gadd45b', 'Junb'),
-           "dPRG"<-c('Baz1a','Brinp1','Grasp','Bdnf'),
-           "SRG"<-c('Nptx2','Mfap3l','Kcna1','Kcnj2'))
-for(i in 1:length(features)){
-plotGroupedHeatmap(sce.subset,features=features[[i]],cluster_rows=F,cluster_cols=F,
-                   group='Sample',center=T,fontsize=11)}
+#grouped heatmap for figure 2
+pdf('plots/heatmap_ARGs_bySample.pdf',w=2,h=4)
+features=c('Arc' , 'Egr3', 'Gadd45g', 'Junb',
+           'Baz1a','Brinp1','Grasp','Bdnf',
+          'Nptx2','Mfap3l','Kcna1','Kcnj4')
+plotGroupedHeatmap(sce.subset,features=features,cluster_rows=F,cluster_cols=F,
+                   group='Sample',center=T,fontsize=11,zlim=c(-0.49,0.49))
 dev.off()
 
 ##volcano plot
