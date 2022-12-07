@@ -158,15 +158,15 @@ sce.fig3<-sce.subset[,sce.subset$cellType_DE %in% c('CA1','CA3.1','PS.1','GC')]
 
 ##set up labels for plots
 sce.fig3$cellType_DE<-droplevels(sce.fig3$cellType_DE)
-sce.fig3$cellType:condition<-as.character(sce.fig3$cellType_DE)
-sce.fig3$cellType:condition<-factor(ifelse(sce.fig3$condition=='Sham',
-                                   paste0(sce.fig3$cellType:condition,'.Sham'),
-                                   paste0(sce.fig3$cellType:condition,'.ECS')))
+sce.fig3$cellType_condition<-as.character(sce.fig3$cellType_DE)
+sce.fig3$cellType_condition<-factor(ifelse(sce.fig3$condition=='Sham',
+                                   paste0(sce.fig3$cellType_condition,'.Sham'),
+                                   paste0(sce.fig3$cellType_condition,'.ECS')))
 ##Violin plots
 features=c('Mir670hg','Ppm1h','Baz1a','Tll1','Inhba','Kdm2b')
 pdf('fig3_violins.pdf',w=4,h=7)
 plotExpression(sce.fig3,features=features,
-               x="cellType:condition", colour_by="cellType_DE", point_alpha=0.5, point_size=.7,add_legend=F)+
+               x="cellType_condition", colour_by="cellType_DE", point_alpha=0.5, point_size=.7,add_legend=F)+
   stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", 
                width = 0.3)+
   theme(axis.text.x = element_text(angle = 45),
